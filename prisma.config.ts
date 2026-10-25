@@ -1,6 +1,6 @@
 // O Prisma CLI não carrega o .env sozinho a partir da v7.
 import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -8,6 +8,8 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    // process.env em vez de env(): env() falha sem a variável, o que quebraria
+    // o `prisma generate` do postinstall antes de o .env existir.
+    url: process.env.DATABASE_URL,
   },
 });
