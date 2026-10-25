@@ -1,0 +1,12 @@
+// Esquema do banco do EventScore (fonte de verdade das migrações).
+// Models serão adicionados após aprovação do DER pela equipe de banco (DEP01).
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
