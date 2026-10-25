@@ -8,5 +8,16 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    coverage: {
+      // Conta todos os arquivos de src/, inclusive os sem teste, para a
+      // porcentagem refletir o projeto e não só o que os testes importam.
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/generated/**',
+        'src/main.ts',
+        'src/**/*.module.ts',
+        'src/**/*.spec.ts',
+      ],
+    },
   },
 });
