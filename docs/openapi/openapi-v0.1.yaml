@@ -1,0 +1,1224 @@
+openapi: 3.0.3
+info:
+  title: "EventScore API (Arena Comp 2026)"
+  version: "0.1.0"
+  description: |
+    Especificação formal inicial da API RESTful do **EventScore**, desenvolvida para a competição acadêmica **Arena Comp 2026**.
+    
+    Esta especificação corresponde à entrega da **Sprint 01 (S1)**, formalizada no Workshop de Contrato API (US02 / T06) e aprovada pela equipe de frontend na versão **v0.3**.
+
+    ### Principais Decisões de Contrato:
+    - **Prefixo base:** `/api/v1` (definido nos servidores).
+    - **Nomenclatura:** rotas em português, kebab-case, no plural e sem acentos (`/eventos`, `/dias`, `/grupos`).
+    - **Identificadores:** no padrão `{nomeId}` (ex.: `{eventoId}`, `{diaId}`, `{grupoId}`).
+    - **Payloads:** propriedades JSON em `camelCase`. Banco de dados em `snake_case` com conversão automática na camada de serviço.
+    - **Formatos de Data/Hora:**
+      - Datas puras: ISO 8601 (`YYYY-MM-DD`).
+      - Timestamps completos: ISO 8601 em UTC (`YYYY-MM-DDTHH:mm:ssZ`).
+    - **Padrão de Resposta:**
+      - Recursos individuais: retornam o próprio objeto JSON diretamente.
+      - Listas simples: retornam array JSON direto `[...]`.
+      - Listas com metadados/métricas: padrão envelope `{ "dados": [...], "paginacao"?: {...}, "resumo"?: {...} }`.
+    - **Autenticação:** Bearer JWT informado no cabeçalho `Authorization: Bearer <token>`.
+    - **Erros:** Formato padrão NestJS `{ "statusCode": number, "message": string | string[], "error": string }`.
+  contact:
+    name: "Equipe de Backend - EventScore"
+servers:
+  - url: http://localhost:3000/api/v1
+    description: "Ambiente de desenvolvimento local"
+
+tags:
+  - name: Auth
+    description: "Autenticação e perfil do usuário do sistema"
+  - name: Eventos
+    description: "Gestão do ciclo de vida, detalhes e ativação de eventos"
+  - name: Dias
+    description: "Gestão do cronograma e dos dias de competição do evento"
+  - name: Grupos
+    description: "Gestão das equipes/grupos de participantes do evento"
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: "Autenticar usuário"
+      description: "Autentica um organizador ou administrador com e-mail e senha. Retorna o token JWT e a data de expiração ISO 8601 UTC."
+      operationId: "autenticarUsuario"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestDto'
+            example:
+              email: "admin@arena.com"
+              senha: "SenhaForte@2026"
+      responses:
+        '200':
+          description: "Autenticação realizada com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDto'
+              example:
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXJlbmEuY29tIiwiaWF0IjoxNzg1MDU4NDAwLCJleHAiOjE3ODUxNDQ4MDB9.signature"
+                expiraEm: "2026-11-23T22:38:00Z"
+                usuario:
+                  id: 1
+                  nome: "Administrador Arena"
+                  email: "admin@arena.com"
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          description: "Credenciais de acesso inválidas."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 401
+                message: "E-mail ou senha inválidos"
+                error: "Unauthorized"
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: "Obter dados do usuário autenticado"
+      description: "Retorna as informações do usuário atual associado ao token JWT enviado no cabeçalho Authorization."
+      operationId: "obterUsuarioAutenticado"
+      responses:
+        '200':
+          description: "Dados do usuário autenticado retornados com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumoDto'
+              example:
+                id: 1
+                nome: "Administrador Arena"
+                email: "admin@arena.com"
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+
+  /eventos:
+    get:
+      tags:
+        - Eventos
+      summary: "Listar eventos"
+      description: "Retorna a listagem de todos os eventos cadastrados na plataforma."
+      operationId: "listarEventos"
+      responses:
+        '200':
+          description: "Lista de eventos cadastrados retornada com sucesso."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoResumoDto'
+              example:
+                - id: 1
+                  nome: "Arena Comp 2026"
+                  ano: 2026
+                  dataInicio: "2026-11-20"
+                  dataFim: "2026-11-22"
+                  ativo: true
+                  quantidadeDias: 3
+                - id: 2
+                  nome: "Arena Comp 2025"
+                  ano: 2025
+                  dataInicio: "2025-11-14"
+                  dataFim: "2025-11-16"
+                  ativo: false
+                  quantidadeDias: 3
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+    post:
+      tags:
+        - Eventos
+      summary: "Criar novo evento"
+      description: "Cadastra um novo evento no sistema. Novos eventos são criados por padrão como inativos (`ativo: false`)."
+      operationId: "criarEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarEventoDto'
+            example:
+              nome: "Arena Comp 2026"
+              ano: 2026
+              dataInicio: "2026-11-20"
+              dataFim: "2026-11-22"
+      responses:
+        '201':
+          description: "Evento criado com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoResumoDto'
+              example:
+                id: 1
+                nome: "Arena Comp 2026"
+                ano: 2026
+                dataInicio: "2026-11-20"
+                dataFim: "2026-11-22"
+                ativo: false
+                quantidadeDias: 0
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '422':
+          description: "Violação de regra de negócio (ex.: data de término anterior à data de início)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 422
+                message: "A data de término deve ser igual ou posterior à data de início do evento"
+                error: "Unprocessable Entity"
+
+  /eventos/ativo:
+    get:
+      tags:
+        - Eventos
+      summary: "Consultar evento ativo"
+      description: "Retorna os detalhes do evento marcado atualmente como ativo. Apenas um evento pode estar ativo por vez (RF02)."
+      operationId: "obterEventoAtivo"
+      responses:
+        '200':
+          description: "Dados do evento ativo no momento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoResumoDto'
+              example:
+                id: 1
+                nome: "Arena Comp 2026"
+                ano: 2026
+                dataInicio: "2026-11-20"
+                dataFim: "2026-11-22"
+                ativo: true
+                quantidadeDias: 3
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          description: "Nenhum evento ativo encontrado."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 404
+                message: "Nenhum evento está ativo no momento"
+                error: "Not Found"
+
+  /eventos/{eventoId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+    get:
+      tags:
+        - Eventos
+      summary: "Consultar evento por ID"
+      description: "Retorna os detalhes completos do evento, incluindo o indicador booleano `temResultado`, que indica se já há apurações ou resultados lançados."
+      operationId: "obterEventoPorId"
+      responses:
+        '200':
+          description: "Detalhes do evento retornados com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoDetalheDto'
+              example:
+                id: 1
+                nome: "Arena Comp 2026"
+                ano: 2026
+                dataInicio: "2026-11-20"
+                dataFim: "2026-11-22"
+                ativo: true
+                quantidadeDias: 3
+                temResultado: false
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    patch:
+      tags:
+        - Eventos
+      summary: "Atualizar evento"
+      description: "Atualiza parcialmente os campos cadastrais de um evento existente."
+      operationId: "atualizarEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarEventoDto'
+            example:
+              nome: "Arena Comp 2026 - Edição Oficial"
+              dataFim: "2026-11-23"
+      responses:
+        '200':
+          description: "Evento atualizado com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoResumoDto'
+              example:
+                id: 1
+                nome: "Arena Comp 2026 - Edição Oficial"
+                ano: 2026
+                dataInicio: "2026-11-20"
+                dataFim: "2026-11-23"
+                ativo: true
+                quantidadeDias: 3
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '422':
+          description: "Violação de regra de negócio (ex.: período incompatível com dias cadastrados)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 422
+                message: "A nova data de início não pode ser posterior aos dias de evento já cadastrados"
+                error: "Unprocessable Entity"
+
+  /eventos/{eventoId}/ativar:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+    post:
+      tags:
+        - Eventos
+      summary: "Ativar evento"
+      description: "Define o evento informado como o evento ativo do sistema (RF02). Caso haja outro evento ativo previamente, ele será desativado automaticamente."
+      operationId: "ativarEvento"
+      responses:
+        '200':
+          description: "Evento ativado com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoResumoDto'
+              example:
+                id: 1
+                nome: "Arena Comp 2026"
+                ano: 2026
+                dataInicio: "2026-11-20"
+                dataFim: "2026-11-22"
+                ativo: true
+                quantidadeDias: 3
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+  /eventos/{eventoId}/dias:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+    get:
+      tags:
+        - Dias
+      summary: "Listar dias do evento"
+      description: "Retorna a lista de dias cadastrados para o evento informado, em ordem cronológica."
+      operationId: "listarDiasEvento"
+      responses:
+        '200':
+          description: "Lista de dias do evento retornada com sucesso."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiaEventoDto'
+              example:
+                - id: 1
+                  numeroDia: 1
+                  data: "2026-11-20"
+                - id: 2
+                  numeroDia: 2
+                  data: "2026-11-21"
+                - id: 3
+                  numeroDia: 3
+                  data: "2026-11-22"
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    post:
+      tags:
+        - Dias
+      summary: "Cadastrar dia no evento"
+      description: "Adiciona um dia de competição ao cronograma do evento. A data deve pertencer ao intervalo de datas do evento e o `numeroDia` deve ser único."
+      operationId: "criarDiaEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarDiaEventoDto'
+            example:
+              numeroDia: 1
+              data: "2026-11-20"
+      responses:
+        '201':
+          description: "Dia cadastrado com sucesso no evento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaEventoDto'
+              example:
+                id: 1
+                numeroDia: 1
+                data: "2026-11-20"
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: número do dia ou data já cadastrada para este evento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "O número de dia 1 já está cadastrado para este evento"
+                error: "Conflict"
+        '422':
+          description: "Violação de regra de negócio (data fora do período do evento)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 422
+                message: "A data informada (2026-11-25) está fora do período do evento (2026-11-20 a 2026-11-22)"
+                error: "Unprocessable Entity"
+
+  /eventos/{eventoId}/dias/{diaId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+      - $ref: '#/components/parameters/DiaIdParam'
+    patch:
+      tags:
+        - Dias
+      summary: "Atualizar dia do evento"
+      description: "Atualiza o número do dia ou a data de um dia específico do evento."
+      operationId: "atualizarDiaEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarDiaEventoDto'
+            example:
+              data: "2026-11-21"
+      responses:
+        '200':
+          description: "Dia do evento atualizado com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaEventoDto'
+              example:
+                id: 1
+                numeroDia: 1
+                data: "2026-11-21"
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: número de dia já utilizado por outro dia deste evento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "Já existe outro dia cadastrado com o número 2 neste evento"
+                error: "Conflict"
+        '422':
+          description: "Violação de regra de negócio (data fora do período do evento)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 422
+                message: "A data informada (2026-11-25) está fora do período do evento (2026-11-20 a 2026-11-22)"
+                error: "Unprocessable Entity"
+    delete:
+      tags:
+        - Dias
+      summary: "Excluir dia do evento"
+      description: "Exclui um dia cadastrado no evento. Não é permitida a exclusão caso existam desafios associados ou presenças lançadas."
+      operationId: "excluirDiaEvento"
+      responses:
+        '204':
+          description: "Dia excluído com sucesso (sem conteúdo no corpo)."
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: o dia possui desafios ou presenças vinculadas e não pode ser excluído."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "Não é possível excluir o dia pois já existem registros de presença ou desafios vinculados"
+                error: "Conflict"
+
+  /eventos/{eventoId}/grupos:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+    get:
+      tags:
+        - Grupos
+      summary: "Listar grupos do evento"
+      description: "Retorna a lista de grupos vinculados ao evento, contendo a cor de identificação e o total de participantes."
+      operationId: "listarGruposEvento"
+      responses:
+        '200':
+          description: "Lista de grupos do evento retornada com sucesso."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GrupoResumoDto'
+              example:
+                - id: 1
+                  nome: "Alfa"
+                  cor: "#FF5733"
+                  quantidadeParticipantes: 12
+                - id: 2
+                  nome: "Beta"
+                  cor: "#3380FF"
+                  quantidadeParticipantes: 10
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    post:
+      tags:
+        - Grupos
+      summary: "Criar grupo no evento"
+      description: "Cadastra uma nova equipe/grupo para o evento com nome e cor hexadecimal (#RRGGBB). O grupo inicia com 0 participantes."
+      operationId: "criarGrupoEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarGrupoDto'
+            example:
+              nome: "Alfa"
+              cor: "#FF5733"
+      responses:
+        '201':
+          description: "Grupo criado com sucesso no evento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoResumoDto'
+              example:
+                id: 1
+                nome: "Alfa"
+                cor: "#FF5733"
+                quantidadeParticipantes: 0
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: nome do grupo ou cor já cadastrada para este evento."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "Já existe um grupo cadastrado com o nome 'Alfa' neste evento"
+                error: "Conflict"
+
+  /eventos/{eventoId}/grupos/{grupoId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoIdParam'
+      - $ref: '#/components/parameters/GrupoIdParam'
+    get:
+      tags:
+        - Grupos
+      summary: "Consultar grupo por ID"
+      description: "Retorna os dados cadastrais e métricas de um grupo específico do evento."
+      operationId: "obterGrupoPorId"
+      responses:
+        '200':
+          description: "Dados do grupo retornados com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoResumoDto'
+              example:
+                id: 1
+                nome: "Alfa"
+                cor: "#FF5733"
+                quantidadeParticipantes: 12
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    patch:
+      tags:
+        - Grupos
+      summary: "Atualizar grupo do evento"
+      description: "Atualiza parcialmente o nome ou a cor do grupo. Não é permitida a alteração se o evento já possuir resultados lançados (RF03)."
+      operationId: "atualizarGrupoEvento"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarGrupoDto'
+            example:
+              nome: "Alfa Prime"
+              cor: "#FF2A00"
+      responses:
+        '200':
+          description: "Grupo atualizado com sucesso."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoResumoDto'
+              example:
+                id: 1
+                nome: "Alfa Prime"
+                cor: "#FF2A00"
+                quantidadeParticipantes: 12
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: evento já possui resultados lançados (bloqueio por RF03) ou nome duplicado."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "Não é permitido alterar grupos de um evento que já possui resultados lançados (RF03)"
+                error: "Conflict"
+    delete:
+      tags:
+        - Grupos
+      summary: "Excluir grupo do evento"
+      description: "Remove um grupo do evento. Não é permitida a exclusão se o evento já possuir resultados lançados (RF03) ou se houver participantes/registros vinculados."
+      operationId: "excluirGrupoEvento"
+      responses:
+        '204':
+          description: "Grupo excluído com sucesso (sem conteúdo no corpo)."
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '409':
+          description: "Conflito: evento já possui resultados lançados (RF03) ou grupo possui participantes vinculados."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 409
+                message: "Não é permitido excluir grupos de um evento que já possui resultados lançados (RF03)"
+                error: "Conflict"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Token JWT fornecido no formato 'Bearer <token>'"
+
+  parameters:
+    EventoIdParam:
+      name: eventoId
+      in: path
+      required: true
+      description: "Identificador numérico único do evento."
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+    DiaIdParam:
+      name: diaId
+      in: path
+      required: true
+      description: "Identificador numérico único do dia do evento."
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+    GrupoIdParam:
+      name: grupoId
+      in: path
+      required: true
+      description: "Identificador numérico único do grupo."
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  responses:
+    RequisicaoInvalida:
+      description: "Erro de validação de sintaxe ou de campos do payload disparado pelo ValidationPipe."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroValidacaoDto'
+          example:
+            statusCode: 400
+            message:
+              - "email deve ser um endereço de e-mail válido"
+              - "senha deve ter pelo menos 6 caracteres"
+            error: "Bad Request"
+
+    NaoAutorizado:
+      description: "Token JWT ausente, expirado ou inválido."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadraoDto'
+          example:
+            statusCode: 401
+            message: "Token de autenticação não fornecido ou inválido"
+            error: "Unauthorized"
+
+    NaoEncontrado:
+      description: "Recurso solicitado não foi encontrado ou pertence a outro evento."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadraoDto'
+          example:
+            statusCode: 404
+            message: "Recurso não encontrado"
+            error: "Not Found"
+
+    Conflito:
+      description: "Conflito de estado ou violação de unicidade de dados."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadraoDto'
+          example:
+            statusCode: 409
+            message: "Registro conflitante com o estado atual da entidade"
+            error: "Conflict"
+
+    RegraDeNegocio:
+      description: "Violação de regra de negócio específica do domínio da aplicação."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroPadraoDto'
+          example:
+            statusCode: 422
+            message: "Ação não permitida pelas regras de negócio da competição"
+            error: "Unprocessable Entity"
+
+  schemas:
+    # ----------------------------------------------------
+    # Autenticação
+    # ----------------------------------------------------
+    LoginRequestDto:
+      type: object
+      required:
+        - email
+        - senha
+      properties:
+        email:
+          type: string
+          format: email
+          description: "E-mail cadastrado do usuário organizador ou administrador."
+          example: "admin@arena.com"
+        senha:
+          type: string
+          format: password
+          description: "Senha de acesso do usuário."
+          example: "SenhaForte@2026"
+
+    LoginResponseDto:
+      type: object
+      required:
+        - token
+        - expiraEm
+        - usuario
+      properties:
+        token:
+          type: string
+          description: "Token JWT assinado para autenticação nas rotas protegidas."
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXJlbmEuY29tIiwiaWF0IjoxNzg1MDU4NDAwLCJleHAiOjE3ODUxNDQ4MDB9.signature"
+        expiraEm:
+          type: string
+          format: date-time
+          description: "Timestamp de expiração do token em formato ISO 8601 UTC."
+          example: "2026-11-23T22:38:00Z"
+        usuario:
+          $ref: '#/components/schemas/UsuarioResumoDto'
+
+    UsuarioResumoDto:
+      type: object
+      required:
+        - id
+        - nome
+        - email
+      properties:
+        id:
+          type: integer
+          description: "Identificador numérico do usuário."
+          example: 1
+        nome:
+          type: string
+          description: "Nome completo do usuário."
+          example: "Administrador Arena"
+        email:
+          type: string
+          format: email
+          description: "E-mail cadastrado do usuário."
+          example: "admin@arena.com"
+
+    # ----------------------------------------------------
+    # Eventos
+    # ----------------------------------------------------
+    EventoResumoDto:
+      type: object
+      required:
+        - id
+        - nome
+        - ano
+        - dataInicio
+        - dataFim
+        - ativo
+        - quantidadeDias
+      properties:
+        id:
+          type: integer
+          description: "Identificador numérico único do evento."
+          example: 1
+        nome:
+          type: string
+          description: "Nome oficial do evento."
+          example: "Arena Comp 2026"
+        ano:
+          type: integer
+          description: "Ano de realização do evento."
+          example: 2026
+        dataInicio:
+          type: string
+          format: date
+          description: "Data inicial do evento no formato ISO 8601 (YYYY-MM-DD)."
+          example: "2026-11-20"
+        dataFim:
+          type: string
+          format: date
+          description: "Data final do evento no formato ISO 8601 (YYYY-MM-DD)."
+          example: "2026-11-22"
+        ativo:
+          type: boolean
+          description: "Indica se o evento é o evento ativo atual no sistema."
+          example: true
+        quantidadeDias:
+          type: integer
+          minimum: 0
+          description: "Quantidade de dias de competição cadastrados para o evento."
+          example: 3
+
+    EventoDetalheDto:
+      type: object
+      required:
+        - id
+        - nome
+        - ano
+        - dataInicio
+        - dataFim
+        - ativo
+        - quantidadeDias
+        - temResultado
+      properties:
+        id:
+          type: integer
+          description: "Identificador numérico único do evento."
+          example: 1
+        nome:
+          type: string
+          description: "Nome oficial do evento."
+          example: "Arena Comp 2026"
+        ano:
+          type: integer
+          description: "Ano de realização do evento."
+          example: 2026
+        dataInicio:
+          type: string
+          format: date
+          description: "Data inicial do evento no formato ISO 8601 (YYYY-MM-DD)."
+          example: "2026-11-20"
+        dataFim:
+          type: string
+          format: date
+          description: "Data final do evento no formato ISO 8601 (YYYY-MM-DD)."
+          example: "2026-11-22"
+        ativo:
+          type: boolean
+          description: "Indica se o evento é o evento ativo atual no sistema."
+          example: true
+        quantidadeDias:
+          type: integer
+          minimum: 0
+          description: "Quantidade de dias de competição cadastrados para o evento."
+          example: 3
+        temResultado:
+          type: boolean
+          description: "Indica se o evento já possui algum resultado lançado. Caso verdadeiro, bloqueia alterações estruturais de grupos conforme RF03."
+          example: false
+
+    CriarEventoDto:
+      type: object
+      required:
+        - nome
+        - ano
+        - dataInicio
+        - dataFim
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: "Nome de exibição do evento."
+          example: "Arena Comp 2026"
+        ano:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+          description: "Ano de realização da competição."
+          example: 2026
+        dataInicio:
+          type: string
+          format: date
+          description: "Data de início do evento (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-20"
+        dataFim:
+          type: string
+          format: date
+          description: "Data de término do evento (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-22"
+
+    AtualizarEventoDto:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: "Nome atualizado do evento."
+          example: "Arena Comp 2026 - Edição Especial"
+        ano:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+          description: "Ano atualizado do evento."
+          example: 2026
+        dataInicio:
+          type: string
+          format: date
+          description: "Nova data de início do evento (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-20"
+        dataFim:
+          type: string
+          format: date
+          description: "Nova data de término do evento (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-23"
+
+    # ----------------------------------------------------
+    # Dias do Evento
+    # ----------------------------------------------------
+    DiaEventoDto:
+      type: object
+      required:
+        - id
+        - numeroDia
+        - data
+      properties:
+        id:
+          type: integer
+          description: "Identificador numérico único do dia do evento."
+          example: 1
+        numeroDia:
+          type: integer
+          minimum: 1
+          description: "Número ordinal sequencial do dia (ex.: Dia 1, Dia 2)."
+          example: 1
+        data:
+          type: string
+          format: date
+          description: "Data correspondente ao dia de evento (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-20"
+
+    CriarDiaEventoDto:
+      type: object
+      required:
+        - numeroDia
+        - data
+      properties:
+        numeroDia:
+          type: integer
+          minimum: 1
+          description: "Número ordinal do dia na competição."
+          example: 1
+        data:
+          type: string
+          format: date
+          description: "Data correspondente ao dia de competição (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-20"
+
+    AtualizarDiaEventoDto:
+      type: object
+      properties:
+        numeroDia:
+          type: integer
+          minimum: 1
+          description: "Novo número ordinal do dia na competição."
+          example: 2
+        data:
+          type: string
+          format: date
+          description: "Nova data do dia de competição (ISO 8601 YYYY-MM-DD)."
+          example: "2026-11-21"
+
+    # ----------------------------------------------------
+    # Grupos do Evento
+    # ----------------------------------------------------
+    GrupoResumoDto:
+      type: object
+      required:
+        - id
+        - nome
+        - cor
+        - quantidadeParticipantes
+      properties:
+        id:
+          type: integer
+          description: "Identificador numérico único do grupo."
+          example: 1
+        nome:
+          type: string
+          description: "Nome oficial do grupo ou equipe."
+          example: "Alfa"
+        cor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          description: "Código de cor hexadecimal identificador da equipe no formato #RRGGBB."
+          example: "#FF5733"
+        quantidadeParticipantes:
+          type: integer
+          minimum: 0
+          description: "Quantidade total de participantes vinculados ao grupo."
+          example: 12
+
+    CriarGrupoDto:
+      type: object
+      required:
+        - nome
+        - cor
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: "Nome identificador do grupo."
+          example: "Alfa"
+        cor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          description: "Código de cor hexadecimal no formato #RRGGBB."
+          example: "#FF5733"
+
+    AtualizarGrupoDto:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: "Novo nome identificador do grupo."
+          example: "Alfa Prime"
+        cor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          description: "Novo código de cor hexadecimal no formato #RRGGBB."
+          example: "#FF2A00"
+
+    # ----------------------------------------------------
+    # Schemas Compartilhados (Envelopes, Paginação e Enums)
+    # ----------------------------------------------------
+    PaginacaoMetaDto:
+      type: object
+      required:
+        - pagina
+        - tamanho
+        - totalItens
+        - totalPaginas
+      properties:
+        pagina:
+          type: integer
+          minimum: 1
+          description: "Página atual consultada (1-indexed)."
+          example: 1
+        tamanho:
+          type: integer
+          minimum: 1
+          description: "Quantidade de itens exibidos por página."
+          example: 20
+        totalItens:
+          type: integer
+          minimum: 0
+          description: "Total acumulado de registros encontrados para a consulta."
+          example: 45
+        totalPaginas:
+          type: integer
+          minimum: 0
+          description: "Total de páginas disponíveis calculadas."
+          example: 3
+
+    EnvelopeListagemDto:
+      type: object
+      description: |
+        Padrão arquitetural de envelope JSON acordado no Workshop T06 para listagens com metadados ou métricas acumuladas (participantes, frequência, classificação e apuração).
+      required:
+        - dados
+      properties:
+        dados:
+          type: array
+          description: "Coleção de itens principais retornados pela consulta."
+          items:
+            type: object
+          example:
+            - id: 1
+              nome: "Participante 1"
+            - id: 2
+              nome: "Participante 2"
+        paginacao:
+          $ref: '#/components/schemas/PaginacaoMetaDto'
+        resumo:
+          type: object
+          description: "Métricas consolidadas ou totalizadores agregados pertinentes à listagem."
+          example:
+            totalPresentes: 110
+            totalAusentes: 10
+            percentualPresenca: 91.67
+
+    TipoCriterioDesempate:
+      type: string
+      description: |
+        Critérios de desempate homologados na regra de negócio da competição (RF13):
+        - `MAIOR_PONTUACAO_DESAFIO`: Maior pontuação em um desafio específico (requer parâmetro `desafioId`).
+        - `MAIOR_SOMA_DESAFIOS`: Maior pontuação agregada considerando apenas os desafios realizados.
+        - `MAIOR_BONIFICACAO`: Maior pontuação obtida por itens de bonificação.
+        - `MENOR_PENALIDADE`: Menor dedução acumulada por penalidades disciplinares.
+        - `MAIOR_PRESENCA`: Maior índice/quantidade percentual de presença dos membros do grupo.
+      enum:
+        - MAIOR_PONTUACAO_DESAFIO
+        - MAIOR_SOMA_DESAFIOS
+        - MAIOR_BONIFICACAO
+        - MENOR_PENALIDADE
+        - MAIOR_PRESENCA
+      example: MAIOR_PONTUACAO_DESAFIO
+
+    # ----------------------------------------------------
+    # Erros Padrão NestJS
+    # ----------------------------------------------------
+    ErroPadraoDto:
+      type: object
+      required:
+        - statusCode
+        - message
+        - error
+      properties:
+        statusCode:
+          type: integer
+          description: "Código de status HTTP correspondente."
+          example: 404
+        message:
+          type: string
+          description: "Mensagem descritiva do erro em português."
+          example: "Recurso não encontrado"
+        error:
+          type: string
+          description: "Denominação canônica do status HTTP do erro."
+          example: "Not Found"
+
+    ErroValidacaoDto:
+      type: object
+      required:
+        - statusCode
+        - message
+        - error
+      properties:
+        statusCode:
+          type: integer
+          description: "Código de status HTTP de validação (400)."
+          example: 400
+        message:
+          type: array
+          description: "Lista de mensagens detalhando as inconsistências dos campos validados."
+          items:
+            type: string
+          example:
+            - "nome não pode estar vazio"
+            - "cor deve ser um código hexadecimal válido no formato #RRGGBB"
+        error:
+          type: string
+          description: "Denominação canônica do erro."
+          example: "Bad Request"
