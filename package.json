@@ -39,6 +39,7 @@
     "@nestjs/terminus": "^12.1.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "argon2": "^0.45.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^4.6.7"
@@ -67,6 +68,7 @@
   },
   "allowScripts": {
     "prisma": true,
-    "@prisma/engines": true
+    "@prisma/engines": true,
+    "argon2": true
   }
 }
