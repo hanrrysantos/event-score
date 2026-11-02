@@ -10,3 +10,35 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Models transcritos da migration oficial V1. As migrations SQL V1..V11
+// continuam sendo a fonte de verdade do banco; a migration Prisma desta
+// branch precisa ser validada pelo grupo de banco antes do merge.
+model Evento {
+  idEvento       Int         @id @default(autoincrement()) @map("id_evento")
+  nome           String      @db.VarChar(150)
+  ano            Int
+  dataInicio     DateTime    @map("data_inicio") @db.Date
+  dataFim        DateTime    @map("data_fim") @db.Date
+  quantidadeDias Int         @map("quantidade_dias")
+  ativo          Boolean     @default(false)
+  penalidadeMin  Int?        @map("penalidade_min")
+  penalidadeMax  Int?        @map("penalidade_max")
+  dias           DiaEvento[]
+
+  @@unique([nome, ano], map: "uq_evento_nome_ano")
+  @@map("evento")
+}
+
+model DiaEvento {
+  idDia     Int      @id @default(autoincrement()) @map("id_dia")
+  idEvento  Int      @map("id_evento")
+  numeroDia Int      @map("numero_dia")
+  data      DateTime @db.Date
+  evento    Evento   @relation(fields: [idEvento], references: [idEvento], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([idEvento, numeroDia], map: "uq_dia_numero")
+  @@unique([idEvento, data], map: "uq_dia_data")
+  @@unique([idDia, idEvento], map: "uq_dia_evento")
+  @@map("dia_evento")
+}
