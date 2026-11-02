@@ -156,6 +156,7 @@ paths:
               ano: 2026
               dataInicio: "2026-11-20"
               dataFim: "2026-11-22"
+              quantidadeDias: 3
       responses:
         '201':
           description: "Evento criado com sucesso."
@@ -170,7 +171,7 @@ paths:
                 dataInicio: "2026-11-20"
                 dataFim: "2026-11-22"
                 ativo: false
-                quantidadeDias: 0
+                quantidadeDias: 3
         '400':
           $ref: '#/components/responses/RequisicaoInvalida'
         '401':
@@ -872,8 +873,8 @@ components:
           example: true
         quantidadeDias:
           type: integer
-          minimum: 0
-          description: "Quantidade de dias de competição cadastrados para o evento."
+          minimum: 1
+          description: "Quantidade de dias de competição configurada para o evento."
           example: 3
 
     EventoDetalheDto:
@@ -916,8 +917,8 @@ components:
           example: true
         quantidadeDias:
           type: integer
-          minimum: 0
-          description: "Quantidade de dias de competição cadastrados para o evento."
+          minimum: 1
+          description: "Quantidade de dias de competição configurada para o evento."
           example: 3
         temResultado:
           type: boolean
@@ -931,6 +932,7 @@ components:
         - ano
         - dataInicio
         - dataFim
+        - quantidadeDias
       properties:
         nome:
           type: string
@@ -954,6 +956,11 @@ components:
           format: date
           description: "Data de término do evento (ISO 8601 YYYY-MM-DD)."
           example: "2026-11-22"
+        quantidadeDias:
+          type: integer
+          minimum: 1
+          description: "Quantidade configurada de dias de competição do evento. Deve ser maior que zero e não pode exceder o intervalo entre dataInicio e dataFim."
+          example: 3
 
     AtualizarEventoDto:
       type: object
@@ -980,6 +987,11 @@ components:
           format: date
           description: "Nova data de término do evento (ISO 8601 YYYY-MM-DD)."
           example: "2026-11-23"
+        quantidadeDias:
+          type: integer
+          minimum: 1
+          description: "Nova quantidade configurada de dias de competição. A alteração não pode invalidar dias já cadastrados."
+          example: 3
 
     # ----------------------------------------------------
     # Dias do Evento
