@@ -24,6 +24,21 @@ Em uma base oficial já criada por V1 a V11, configure apenas `DATABASE_URL` e
 execute a aplicação/testes. O runtime da US6 pode operar sobre as tabelas
 compatíveis já existentes, sem executar a migration Prisma.
 
+## Reprodução dos testes HTTP
+
+O teste e2e exige que o cenário seja informado explicitamente. Ele falha se o
+modo declarado não corresponder às tabelas encontradas:
+
+```bash
+US6_E2E_SCHEMA=prisma-minimal DATABASE_URL=... npm run test:e2e
+US6_E2E_SCHEMA=official DATABASE_URL=... npm run test:e2e
+```
+
+O primeiro comando deve apontar para uma base limpa criada por
+`npm run db:deploy`; o segundo deve apontar para uma base descartável já criada
+pelas migrations oficiais V1–V11. As credenciais e URLs ficam somente no
+ambiente local/CI e não são versionadas.
+
 ## Comandos proibidos na base oficial
 
 Não executar contra a base oficial:

@@ -15,6 +15,7 @@ describe('DiasEventoController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let dependencyTablesAvailable = false;
+  const schemaMode = process.env.US6_E2E_SCHEMA;
   let sequence = 0;
 
   beforeAll(async () => {
@@ -43,6 +44,19 @@ describe('DiasEventoController (e2e)', () => {
         AND table_name IN ('presenca', 'desafio')
     `;
     dependencyTablesAvailable = tables.length === 2;
+
+    if (schemaMode !== 'prisma-minimal' && schemaMode !== 'official') {
+      throw new Error(
+        'US6_E2E_SCHEMA deve ser explicitamente prisma-minimal ou official',
+      );
+    }
+    const expectedDependencyTables = schemaMode === 'official';
+    if (dependencyTablesAvailable !== expectedDependencyTables) {
+      throw new Error(
+        `Schema inesperado para US6_E2E_SCHEMA=${schemaMode}: ` +
+          `tabelas de dependência ${dependencyTablesAvailable ? 'presentes' : 'ausentes'}`,
+      );
+    }
   });
 
   afterAll(async () => {
