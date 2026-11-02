@@ -62,6 +62,11 @@ export class DiasEventoController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Excluir dia de um evento' })
   @ApiNoContentResponse({ description: 'Dia excluído' })
+  @ApiResponse({
+    status: 503,
+    description:
+      'Exclusão indisponível porque o schema não possui as estruturas oficiais para verificar dependências',
+  })
   remove(
     @Param('eventoId', ParseIntPipe) eventoId: number,
     @Param('diaId', ParseIntPipe) diaId: number,
