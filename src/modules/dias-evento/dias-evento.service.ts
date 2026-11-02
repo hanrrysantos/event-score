@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -189,6 +190,16 @@ export class DiasEventoService {
       WHERE table_schema = current_schema()
         AND table_name IN ('presenca', 'desafio')
     `;
+    const existingTables = new Set(tables.map(({ table_name }) => table_name));
+    const missingTables = ['presenca', 'desafio'].filter(
+      (table) => !existingTables.has(table),
+    );
+    if (missingTables.length > 0) {
+      throw new ServiceUnavailableException(
+        'Não é possível excluir o dia enquanto o schema não possui as tabelas de dependências oficiais',
+      );
+    }
+
     for (const { table_name: table } of tables) {
       // Os nomes são constantes, definidos pela V2/V4 oficiais; nenhum input
       // externo é interpolado como identificador.

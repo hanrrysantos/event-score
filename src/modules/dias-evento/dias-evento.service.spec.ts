@@ -1,6 +1,7 @@
 import {
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
@@ -97,12 +98,28 @@ describe('DiasEventoService', () => {
     const prisma = makePrisma();
     prisma.evento.findUnique.mockResolvedValue(evento);
     prisma.diaEvento.findFirst.mockResolvedValue({ idDia: 5, idEvento: 1 });
-    prisma.$queryRaw.mockResolvedValue([{ table_name: 'presenca' }]);
+    prisma.$queryRaw.mockResolvedValue([
+      { table_name: 'presenca' },
+      { table_name: 'desafio' },
+    ]);
     prisma.$queryRawUnsafe.mockResolvedValue([{ exists: true }]);
     const service = new DiasEventoService(prisma as unknown as PrismaService);
 
     await expect(service.remove(1, 5)).rejects.toBeInstanceOf(
       ConflictException,
+    );
+    expect(prisma.diaEvento.delete).not.toHaveBeenCalled();
+  });
+
+  it('falha fechado quando as tabelas oficiais de dependência não existem', async () => {
+    const prisma = makePrisma();
+    prisma.evento.findUnique.mockResolvedValue(evento);
+    prisma.diaEvento.findFirst.mockResolvedValue({ idDia: 5, idEvento: 1 });
+    prisma.$queryRaw.mockResolvedValue([{ table_name: 'presenca' }]);
+    const service = new DiasEventoService(prisma as unknown as PrismaService);
+
+    await expect(service.remove(1, 5)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
     );
     expect(prisma.diaEvento.delete).not.toHaveBeenCalled();
   });
