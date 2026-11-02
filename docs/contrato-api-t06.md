@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Escopo Oficial da Sprint 01 (16 Endpoints S1)
+## 1. Escopo Oficial da Sprint 01 (17 Operações S1)
 Ficou acordado que a Sprint 01 entrega os 4 módulos essenciais com CRUD completo, viabilizando as telas 1, 2 e 4:
 - **Autenticação (2 rotas):** `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
 - **Gestão de Eventos (6 rotas):** `GET /api/v1/eventos`, `GET /api/v1/eventos/ativo`, `GET /api/v1/eventos/{eventoId}`, `POST /api/v1/eventos`, `PATCH /api/v1/eventos/{eventoId}`, `POST /api/v1/eventos/{eventoId}/ativar`
