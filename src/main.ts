@@ -32,7 +32,9 @@ async function bootstrap() {
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('EventScore API')
-      .setDescription('API de apuração e gestão do EventScore (Arena Comp 2026)')
+      .setDescription(
+        'API de apuração e gestão do EventScore (Arena Comp 2026)',
+      )
       .setVersion('0.1.0')
       .addBearerAuth()
       .build();
