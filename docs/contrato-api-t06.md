@@ -12,7 +12,7 @@ Ficou acordado que a Sprint 01 entrega os 4 módulos essenciais com CRUD complet
 - **Autenticação (2 rotas):** `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
 - **Gestão de Eventos (6 rotas):** `GET /api/v1/eventos`, `GET /api/v1/eventos/ativo`, `GET /api/v1/eventos/{eventoId}`, `POST /api/v1/eventos`, `PATCH /api/v1/eventos/{eventoId}`, `POST /api/v1/eventos/{eventoId}/ativar`
 - **Dias do Evento (4 rotas):** `GET /api/v1/eventos/{eventoId}/dias`, `POST /api/v1/eventos/{eventoId}/dias`, `PATCH /api/v1/eventos/{eventoId}/dias/{diaId}`, `DELETE /api/v1/eventos/{eventoId}/dias/{diaId}`
-- **Grupos do Evento (4 rotas):** `GET /api/v1/eventos/{eventoId}/grupos`, `GET /api/v1/eventos/{eventoId}/grupos/{grupoId}`, `POST /api/v1/eventos/{eventoId}/grupos`, `PATCH /api/v1/eventos/{eventoId}/grupos/{grupoId}`, `DELETE /api/v1/eventos/{eventoId}/grupos/{grupoId}`
+- **Grupos do Evento (5 rotas):** `GET /api/v1/eventos/{eventoId}/grupos`, `GET /api/v1/eventos/{eventoId}/grupos/{grupoId}`, `POST /api/v1/eventos/{eventoId}/grupos`, `PATCH /api/v1/eventos/{eventoId}/grupos/{grupoId}`, `DELETE /api/v1/eventos/{eventoId}/grupos/{grupoId}`
 
 ---
 

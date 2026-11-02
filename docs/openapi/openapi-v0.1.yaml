@@ -177,7 +177,7 @@ paths:
         '401':
           $ref: '#/components/responses/NaoAutorizado'
         '422':
-          description: "Violação de regra de negócio (ex.: data de término anterior à data de início)."
+          description: "Violação de regra de negócio (ex.: data de término anterior à data de início ou quantidadeDias superior ao período do evento)."
           content:
             application/json:
               schema:
@@ -290,7 +290,7 @@ paths:
         '404':
           $ref: '#/components/responses/NaoEncontrado'
         '422':
-          description: "Violação de regra de negócio (ex.: período incompatível com dias cadastrados)."
+          description: "Violação de regra de negócio (ex.: período ou quantidadeDias incompatível com o intervalo de datas ou com dias já cadastrados)."
           content:
             application/json:
               schema:
@@ -369,7 +369,7 @@ paths:
       tags:
         - Dias
       summary: "Cadastrar dia no evento"
-      description: "Adiciona um dia de competição ao cronograma do evento. A data deve pertencer ao intervalo de datas do evento e o `numeroDia` deve ser único."
+      description: "Adiciona um dia de competição ao cronograma do evento. A data deve pertencer ao intervalo de datas do evento, o `numeroDia` deve ser único e não pode exceder a `quantidadeDias` configurada para o evento."
       operationId: "criarDiaEvento"
       requestBody:
         required: true
@@ -408,7 +408,7 @@ paths:
                 message: "O número de dia 1 já está cadastrado para este evento"
                 error: "Conflict"
         '422':
-          description: "Violação de regra de negócio (data fora do período do evento)."
+          description: "Violação de regra de negócio (data fora do período do evento ou numeroDia maior que quantidadeDias)."
           content:
             application/json:
               schema:
@@ -464,7 +464,7 @@ paths:
                 message: "Já existe outro dia cadastrado com o número 2 neste evento"
                 error: "Conflict"
         '422':
-          description: "Violação de regra de negócio (data fora do período do evento)."
+          description: "Violação de regra de negócio (data fora do período do evento ou numeroDia maior que quantidadeDias)."
           content:
             application/json:
               schema:
