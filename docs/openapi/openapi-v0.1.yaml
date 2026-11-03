@@ -156,6 +156,7 @@ paths:
               ano: 2026
               dataInicio: "2026-11-20"
               dataFim: "2026-11-22"
+              quantidadeDias: 3
       responses:
         '201':
           description: "Evento criado com sucesso."
@@ -170,13 +171,13 @@ paths:
                 dataInicio: "2026-11-20"
                 dataFim: "2026-11-22"
                 ativo: false
-                quantidadeDias: 0
+                quantidadeDias: 3
         '400':
           $ref: '#/components/responses/RequisicaoInvalida'
         '401':
           $ref: '#/components/responses/NaoAutorizado'
         '422':
-          description: "Violação de regra de negócio (ex.: data de término anterior à data de início)."
+          description: "Violação de regra de negócio (ex.: data de término anterior à data de início ou quantidadeDias superior ao período do evento)."
           content:
             application/json:
               schema:
@@ -289,7 +290,7 @@ paths:
         '404':
           $ref: '#/components/responses/NaoEncontrado'
         '422':
-          description: "Violação de regra de negócio (ex.: período incompatível com dias cadastrados)."
+          description: "Violação de regra de negócio (ex.: período ou quantidadeDias incompatível com o intervalo de datas ou com dias já cadastrados)."
           content:
             application/json:
               schema:
@@ -368,7 +369,7 @@ paths:
       tags:
         - Dias
       summary: "Cadastrar dia no evento"
-      description: "Adiciona um dia de competição ao cronograma do evento. A data deve pertencer ao intervalo de datas do evento e o `numeroDia` deve ser único."
+      description: "Adiciona um dia de competição ao cronograma do evento. A data deve pertencer ao intervalo de datas do evento, o `numeroDia` deve ser único e não pode exceder a `quantidadeDias` configurada para o evento."
       operationId: "criarDiaEvento"
       requestBody:
         required: true
@@ -407,7 +408,7 @@ paths:
                 message: "O número de dia 1 já está cadastrado para este evento"
                 error: "Conflict"
         '422':
-          description: "Violação de regra de negócio (data fora do período do evento)."
+          description: "Violação de regra de negócio (data fora do período do evento ou numeroDia maior que quantidadeDias)."
           content:
             application/json:
               schema:
@@ -463,7 +464,7 @@ paths:
                 message: "Já existe outro dia cadastrado com o número 2 neste evento"
                 error: "Conflict"
         '422':
-          description: "Violação de regra de negócio (data fora do período do evento)."
+          description: "Violação de regra de negócio (data fora do período do evento ou numeroDia maior que quantidadeDias)."
           content:
             application/json:
               schema:
@@ -872,8 +873,8 @@ components:
           example: true
         quantidadeDias:
           type: integer
-          minimum: 0
-          description: "Quantidade de dias de competição cadastrados para o evento."
+          minimum: 1
+          description: "Quantidade de dias de competição configurada para o evento."
           example: 3
 
     EventoDetalheDto:
@@ -916,8 +917,8 @@ components:
           example: true
         quantidadeDias:
           type: integer
-          minimum: 0
-          description: "Quantidade de dias de competição cadastrados para o evento."
+          minimum: 1
+          description: "Quantidade de dias de competição configurada para o evento."
           example: 3
         temResultado:
           type: boolean
@@ -931,6 +932,7 @@ components:
         - ano
         - dataInicio
         - dataFim
+        - quantidadeDias
       properties:
         nome:
           type: string
@@ -954,6 +956,11 @@ components:
           format: date
           description: "Data de término do evento (ISO 8601 YYYY-MM-DD)."
           example: "2026-11-22"
+        quantidadeDias:
+          type: integer
+          minimum: 1
+          description: "Quantidade configurada de dias de competição do evento. Deve ser maior que zero e não pode exceder o intervalo entre dataInicio e dataFim."
+          example: 3
 
     AtualizarEventoDto:
       type: object
@@ -980,6 +987,11 @@ components:
           format: date
           description: "Nova data de término do evento (ISO 8601 YYYY-MM-DD)."
           example: "2026-11-23"
+        quantidadeDias:
+          type: integer
+          minimum: 1
+          description: "Nova quantidade configurada de dias de competição. A alteração não pode invalidar dias já cadastrados."
+          example: 3
 
     # ----------------------------------------------------
     # Dias do Evento
