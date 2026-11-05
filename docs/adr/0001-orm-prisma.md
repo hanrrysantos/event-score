@@ -28,14 +28,14 @@ Pontos que pesam na decisão:
 
 Usar **Prisma 7** (`prisma` e `@prisma/client` `^7.10.1`) com o driver adapter `@prisma/adapter-pg`.
 
-- `prisma/schema.prisma` é a fonte de verdade do esquema.
+- As migrações em `prisma/migrations/` são a fonte de verdade do esquema. O `prisma/schema.prisma` espelha as tabelas e relações para o Prisma Client, mas não representa CHECKs, índices de expressão, triggers, funções nem views, que existem só no SQL.
 - O Prisma Client é gerado em `src/generated/prisma` (ignorado pelo git) via `prisma generate`, executado no `postinstall` e no `start:dev`.
 - O acesso ao banco nos módulos é feito injetando `PrismaService` (módulo global em `src/prisma`).
 - Não usar versões pré-lançamento (a tag `latest` do npm apontava para `8.0.0-rc` na data desta decisão).
 
-### Estratégia de migrações (proposta para a DEP01)
+### Estratégia de migrações (validada na DEP01)
 
-1. A equipe de banco modela no DER; o backend transcreve o modelo aprovado para o `schema.prisma`.
+1. A equipe de banco modela no DER e aprova as mudanças; o backend as transforma em migrações e mantém o `schema.prisma` alinhado a elas.
 2. O backend gera as migrações com `npm run db:migrate` (`prisma migrate dev`).
 3. Todo PR que adiciona migração tem o `migration.sql` revisado pela equipe de banco.
 4. Restrições que o Prisma não expressa (por exemplo, `CHECK` da faixa de penalidade) são adicionadas à mão: `prisma migrate dev --create-only` e edição do SQL antes de aplicar.
