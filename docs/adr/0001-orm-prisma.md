@@ -1,7 +1,7 @@
 # ADR 0001: Prisma como ORM e estratégia de migrações
 
-- **Status:** ORM aceito. Estratégia de migrações proposta, pendente de validação com a equipe de banco (DEP01).
-- **Data:** 2026-10-25
+- **Status:** Aceito. Estratégia de migrações validada com a equipe de banco (DEP01).
+- **Data:** 2026-10-25 (atualizado em 2026-11-05 com a primeira migração)
 - **Tarefa:** US01 / T03
 
 ## Contexto
@@ -53,4 +53,16 @@ Usar **Prisma 7** (`prisma` e `@prisma/client` `^7.10.1`) com o driver adapter `
 - Cada desenvolvedor precisa do PostgreSQL rodando (`docker compose up -d`) para executar `start:dev`.
 - O Prisma Client precisa ser regenerado sempre que o esquema muda; isso é automático no `npm install` e no `start:dev`, mas não no `npm run build` isolado.
 - Os scripts de instalação de `prisma` e `@prisma/engines` estão aprovados em `allowScripts` no `package.json`, pois baixam o binário de migrações.
-- Se a equipe de banco não aceitar a estratégia proposta, este ADR deve ser atualizado com a alternativa acordada antes da primeira migração.
+- CHECKs, índices de expressão, triggers, funções e views existem só no SQL das migrações (ver abaixo). Quem alterar o `schema.prisma` precisa conferir que a migração gerada não remove nenhum deles.
+
+## Primeira migração (DEP01)
+
+A equipe de banco aprovou o DER e entregou os scripts V1 a V11 no formato do Flyway (`V<n>__descricao.sql`). Eles foram convertidos para o formato do Prisma sem alterar o SQL:
+
+- Cada script virou uma migração em `prisma/migrations/2026110500000<n>_v<n>_<descricao>/migration.sql`. O timestamp preserva a ordem de execução definida pela equipe de banco (a V6 depende da V4).
+- O `schema.prisma` foi gerado por `prisma db pull` e renomeado para o padrão TypeScript (models em PascalCase, campos em camelCase, chave primária `id`, chaves estrangeiras `<entidade>Id`), com `@map` e `@@map` para os nomes do banco.
+- Índices únicos parciais (`WHERE ativo`, `WHERE vigente`, `WHERE status = 'OFICIAL'`) usam o preview `partialIndexes` do Prisma. As relações afetadas foram mantidas 1:N, pois esses índices não tornam a relação 1:1.
+- O Prisma não representa CHECKs, índices de expressão (`lower(nome)`, `lower(email)`), triggers, funções nem views. Eles ficam só nas migrações e o `prisma migrate diff` os ignora, sem tentar removê-los.
+- Validação: `prisma migrate dev` sobre um banco criado só pelas migrações não gerou nenhuma mudança, e os testes manuais da equipe de banco (T3, T4 e T5, sobre a massa de desenvolvimento) tiveram o resultado esperado no PostgreSQL 18.
+
+A massa de desenvolvimento da equipe de banco ainda não virou seed do Prisma (item 5 da estratégia); fica para uma tarefa própria, junto com um usuário administrador para testes de login.
