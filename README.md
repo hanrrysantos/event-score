@@ -128,7 +128,7 @@ As decisões de arquitetura ficam registradas em [`docs/adr/`](docs/adr/):
 
 ## Modelo de dados
 
-DER preliminar, sujeito a alterações.
+DER aprovado pela equipe de banco (DEP01). A definição exata de tipos e restrições está nas migrações em `prisma/migrations/`; mudanças no modelo entram por migrações novas.
 
 <p align="center">
   <img src="docs/der-eventscore.png" alt="Diagrama entidade-relacionamento do EventScore">
