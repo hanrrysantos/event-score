@@ -1,12 +1,430 @@
-// Esquema do banco do EventScore (fonte de verdade das migrações).
-// Models serão adicionados após aprovação do DER pela equipe de banco (DEP01).
+// Esquema do banco do EventScore, espelho das migrações em prisma/migrations.
+// As migrações V1 a V11 vieram da equipe de banco (DEP01) e são a fonte das
+// regras do banco; este arquivo descreve o que o Prisma Client precisa enxergar.
 // Docs: https://pris.ly/d/prisma-schema
+//
+// Ficam só no SQL das migrações, porque o Prisma não as representa:
+// - CHECKs (faixas, enums em VARCHAR, ausência x colocação etc.);
+// - índices de expressão: grupo (nome, cor) e usuario (email) com lower();
+// - triggers e funções (validação de datas e fator, bloqueio de grupos,
+//   teto de bonificação, auditoria imutável, desempate append-only);
+// - views vw_participante_fator e vw_resultado_pontuado.
+// O `prisma migrate diff` ignora esses objetos, então eles não são removidos.
+// Mesmo assim, toda mudança de esquema passa por uma migração nova revisada
+// pela equipe de banco.
+//
+// Índices únicos parciais (`where`) dependem do preview `partialIndexes`.
+// Eles não tornam a relação 1:1: um evento tem várias apurações e um grupo
+// tem várias decisões de desempate ao longo do tempo.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------
+// Cadastro (V1, V6)
+// ---------------------------------------------------------------------
+
+model Evento {
+  id             Int      @id @default(autoincrement()) @map("id_evento")
+  nome           String   @db.VarChar(150)
+  ano            Int
+  dataInicio     DateTime @map("data_inicio") @db.Date
+  dataFim        DateTime @map("data_fim") @db.Date
+  quantidadeDias Int      @map("quantidade_dias")
+  ativo          Boolean  @default(false)
+  penalidadeMin  Int?     @map("penalidade_min")
+  penalidadeMax  Int?     @map("penalidade_max")
+
+  apuracoes            Apuracao[]
+  auditorias           Auditoria[]
+  conversoesPontoExtra ConversaoPontoExtra[]
+  criteriosDesempate   CriterioDesempate[]
+  desafios             Desafio[]
+  desempatesManuais    DesempateManual[]
+  dias                 DiaEvento[]
+  fatoresPresenca      FatorPresenca[]
+  grupos               Grupo[]
+  itensBonificacao     ItemBonificacao[]
+  participantes        Participante[]
+
+  @@unique([nome, ano], map: "uq_evento_nome_ano")
+  @@unique([ativo], map: "ux_evento_ativo", where: raw("ativo"))
+  @@map("evento")
+}
+
+model DiaEvento {
+  id        Int      @id @default(autoincrement()) @map("id_dia")
+  eventoId  Int      @map("id_evento")
+  numeroDia Int      @map("numero_dia")
+  data      DateTime @db.Date
+
+  evento    Evento     @relation(fields: [eventoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  desafios  Desafio[]
+  presencas Presenca[]
+
+  @@unique([eventoId, data], map: "uq_dia_data")
+  @@unique([id, eventoId], map: "uq_dia_evento")
+  @@unique([eventoId, numeroDia], map: "uq_dia_numero")
+  @@map("dia_evento")
+}
+
+model Grupo {
+  id       Int    @id @default(autoincrement()) @map("id_grupo")
+  eventoId Int    @map("id_evento")
+  nome     String @db.VarChar(60)
+  cor      String @db.VarChar(30)
+
+  evento            Evento               @relation(fields: [eventoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  bonificacoes      BonificacaoGrupo[]
+  classificacoes    ClassificacaoGrupo[]
+  desempatesManuais DesempateManual[]
+  participantes     Participante[]
+  penalidades       Penalidade[]
+  resultados        ResultadoDesafio[]
+
+  @@unique([id, eventoId], map: "uq_grupo_evento")
+  @@map("grupo")
+}
+
+model Participante {
+  id        Int    @id @default(autoincrement()) @map("id_participante")
+  grupoId   Int    @map("id_grupo")
+  eventoId  Int    @map("id_evento")
+  nome      String @db.VarChar(150)
+  matricula String @db.VarChar(20)
+  turma     String @db.VarChar(10)
+
+  grupo     Grupo      @relation(fields: [grupoId, eventoId], references: [id, eventoId], onDelete: NoAction, onUpdate: NoAction, map: "fk_participante_grupo_evento")
+  evento    Evento     @relation(fields: [eventoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  presencas Presenca[]
+
+  @@unique([id, eventoId], map: "uq_participante_evento")
+  @@unique([eventoId, matricula], map: "uq_participante_matricula")
+  @@index([grupoId], map: "ix_participante_grupo")
+  @@map("participante")
+}
+
+// ---------------------------------------------------------------------
+// Presença (V2, V3)
+// ---------------------------------------------------------------------
+
+model Presenca {
+  id             Int     @id @default(autoincrement()) @map("id_presenca")
+  eventoId       Int     @map("id_evento")
+  diaId          Int     @map("id_dia")
+  participanteId Int     @map("id_participante")
+  presente       Boolean
+
+  dia          DiaEvento    @relation(fields: [diaId, eventoId], references: [id, eventoId], onDelete: NoAction, onUpdate: NoAction, map: "fk_presenca_dia_evento")
+  participante Participante @relation(fields: [participanteId, eventoId], references: [id, eventoId], onDelete: NoAction, onUpdate: NoAction, map: "fk_presenca_participante_evento")
+
+  @@unique([diaId, participanteId], map: "uq_presenca_dia_participante")
+  @@index([participanteId], map: "ix_presenca_participante")
+  @@map("presenca")
+}
+
+model FatorPresenca {
+  id            Int     @id @default(autoincrement()) @map("id_fator_presenca")
+  eventoId      Int     @map("id_evento")
+  diasPresentes Int     @map("dias_presentes")
+  fator         Decimal @db.Decimal(5, 4)
+
+  evento Evento @relation(fields: [eventoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([eventoId, diasPresentes], map: "uq_fator_evento_dias")
+  @@map("fator_presenca")
+}
+
+// ---------------------------------------------------------------------
+// Desafios e resultados (V4, V5)
+// ---------------------------------------------------------------------
+
+model Desafio {
+  id        Int     @id @default(autoincrement()) @map("id_desafio")
+  eventoId  Int     @map("id_evento")
+  diaId     Int     @map("id_dia")
+  nome      String  @db.VarChar(100)
+  descricao String? @db.VarChar(255)
+
+  evento             Evento              @relation(fields: [eventoId], references: [id], onUpdate: NoAction)
+  dia                DiaEvento           @relation(fields: [diaId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_desafio_dia_evento")
+  criteriosDesempate CriterioDesempate[]
+  pontosColocacao    PontosColocacao[]
+  resultados         ResultadoDesafio[]
+
+  @@unique([id, eventoId], map: "uq_desafio_evento")
+  @@unique([eventoId, diaId, nome], map: "uq_desafio_nome")
+  @@map("desafio")
+}
+
+model PontosColocacao {
+  id        Int @id @default(autoincrement()) @map("id_pontos_colocacao")
+  desafioId Int @map("id_desafio")
+  colocacao Int
+  pontos    Int
+
+  desafio Desafio @relation(fields: [desafioId], references: [id], onUpdate: NoAction)
+
+  @@unique([desafioId, colocacao], map: "uq_pontos_colocacao")
+  @@map("pontos_colocacao")
+}
+
+model ResultadoDesafio {
+  id        Int     @id @default(autoincrement()) @map("id_resultado")
+  eventoId  Int     @map("id_evento")
+  desafioId Int     @map("id_desafio")
+  grupoId   Int     @map("id_grupo")
+  colocacao Int?
+  ausente   Boolean @default(false)
+
+  desafio   Desafio                    @relation(fields: [desafioId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_resultado_desafio_evento")
+  grupo     Grupo                      @relation(fields: [grupoId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_resultado_grupo_evento")
+  apuracoes ApuracaoResultadoDesafio[]
+
+  @@unique([desafioId, grupoId], map: "uq_resultado_grupo_desafio")
+  @@unique([desafioId, colocacao], map: "ux_resultado_colocacao_presentes", where: raw("(NOT ausente)"))
+  @@index([desafioId], map: "ix_resultado_desafio")
+  @@index([grupoId], map: "ix_resultado_grupo")
+  @@map("resultado_desafio")
+}
+
+// ---------------------------------------------------------------------
+// Usuários e auditoria (V7, V8)
+// ---------------------------------------------------------------------
+
+model Usuario {
+  id        Int     @id @default(autoincrement()) @map("id_usuario")
+  nome      String  @db.VarChar(150)
+  email     String  @db.VarChar(150)
+  senhaHash String  @map("senha_hash") @db.VarChar(255)
+  perfil    String  @default("OPERADOR") @db.VarChar(20)
+  ativo     Boolean @default(true)
+
+  apuracoes         Apuracao[]
+  auditorias        Auditoria[]
+  desempatesManuais DesempateManual[]
+
+  @@map("usuario")
+}
+
+model Auditoria {
+  id             Int      @id @default(autoincrement()) @map("id_auditoria")
+  usuarioId      Int      @map("id_usuario")
+  eventoId       Int?     @map("id_evento")
+  operacaoId     String   @map("id_operacao") @db.Uuid
+  entidade       String   @db.VarChar(60)
+  registroId     Int      @map("id_registro")
+  operacao       String   @db.VarChar(10)
+  dataHora       DateTime @default(now()) @map("data_hora") @db.Timestamptz(6)
+  descricao      String?  @db.VarChar(255)
+  justificativa  String?  @db.VarChar(500)
+  afetaResultado Boolean  @default(false) @map("afeta_resultado")
+
+  usuario  Usuario            @relation(fields: [usuarioId], references: [id], onUpdate: NoAction)
+  evento   Evento?            @relation(fields: [eventoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  detalhes AuditoriaDetalhe[]
+
+  @@index([eventoId, dataHora], map: "ix_auditoria_evento_data")
+  @@index([operacaoId], map: "ix_auditoria_operacao")
+  @@index([eventoId, dataHora], map: "ix_auditoria_recalculo", where: raw("afeta_resultado"))
+  @@index([entidade, registroId], map: "ix_auditoria_registro")
+  @@index([usuarioId], map: "ix_auditoria_usuario")
+  @@map("auditoria")
+}
+
+model AuditoriaDetalhe {
+  id            Int     @id @default(autoincrement()) @map("id_auditoria_detalhe")
+  auditoriaId   Int     @map("id_auditoria")
+  campo         String  @db.VarChar(60)
+  valorAnterior String? @map("valor_anterior")
+  valorNovo     String? @map("valor_novo")
+
+  auditoria Auditoria @relation(fields: [auditoriaId], references: [id], onUpdate: NoAction)
+
+  @@unique([auditoriaId, campo], map: "uq_auditoria_detalhe_campo")
+  @@map("auditoria_detalhe")
+}
+
+// ---------------------------------------------------------------------
+// Bonificações, penalidades e conversão (V9)
+// ---------------------------------------------------------------------
+
+model ItemBonificacao {
+  id       Int    @id @default(autoincrement()) @map("id_item_bonificacao")
+  eventoId Int    @map("id_evento")
+  nome     String @db.VarChar(150)
+  teto     Int
+
+  evento       Evento             @relation(fields: [eventoId], references: [id], onUpdate: NoAction)
+  bonificacoes BonificacaoGrupo[]
+
+  @@unique([eventoId, nome], map: "uq_item_bonificacao_evento_nome")
+  @@map("item_bonificacao")
+}
+
+model BonificacaoGrupo {
+  id                Int @id @default(autoincrement()) @map("id_bonificacao_grupo")
+  itemBonificacaoId Int @map("id_item_bonificacao")
+  grupoId           Int @map("id_grupo")
+  valor             Int
+
+  itemBonificacao ItemBonificacao @relation(fields: [itemBonificacaoId], references: [id], onUpdate: NoAction)
+  grupo           Grupo           @relation(fields: [grupoId], references: [id], onUpdate: NoAction)
+
+  @@unique([grupoId, itemBonificacaoId], map: "uq_bonificacao_grupo_item")
+  @@map("bonificacao_grupo")
+}
+
+model Penalidade {
+  id            Int     @id @default(autoincrement()) @map("id_penalidade")
+  descricao     String? @db.VarChar(255)
+  pontos        Int
+  justificativa String  @db.VarChar(500)
+  grupoId       Int     @map("id_grupo")
+
+  grupo Grupo @relation(fields: [grupoId], references: [id], onUpdate: NoAction)
+
+  @@map("penalidade")
+}
+
+model ConversaoPontoExtra {
+  id         Int     @id @default(autoincrement()) @map("id_conversao_ponto_extra")
+  eventoId   Int     @map("id_evento")
+  colocacao  Int
+  pontoExtra Decimal @map("ponto_extra") @db.Decimal(5, 1)
+
+  evento Evento @relation(fields: [eventoId], references: [id], onUpdate: NoAction)
+
+  @@unique([eventoId, colocacao], map: "uq_conversao_evento_colocacao")
+  @@map("conversao_ponto_extra")
+}
+
+// ---------------------------------------------------------------------
+// Critérios, apuração e classificação (V10)
+// ---------------------------------------------------------------------
+
+model CriterioDesempate {
+  id        Int    @id @default(autoincrement()) @map("id_criterio_desempate")
+  eventoId  Int    @map("id_evento")
+  ordem     Int
+  descricao String @db.VarChar(255)
+  tipo      String @db.VarChar(30)
+  sentido   String @default("DESC") @db.VarChar(4)
+  desafioId Int?   @map("id_desafio")
+
+  evento            Evento             @relation(fields: [eventoId], references: [id], onUpdate: NoAction)
+  desafio           Desafio?           @relation(fields: [desafioId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_criterio_desafio_evento")
+  apuracaoCriterios ApuracaoCriterio[]
+
+  @@unique([eventoId, ordem], map: "uq_criterio_evento_ordem")
+  @@map("criterio_desempate")
+}
+
+model Apuracao {
+  id         Int      @id @default(autoincrement()) @map("id_apuracao")
+  eventoId   Int      @map("id_evento")
+  versao     Int
+  dataHora   DateTime @default(now()) @map("data_hora") @db.Timestamptz(6)
+  usuarioId  Int      @map("id_usuario")
+  operacaoId String   @map("id_operacao") @db.Uuid
+  status     String   @default("PROVISORIA") @db.VarChar(15)
+
+  evento            Evento                     @relation(fields: [eventoId], references: [id], onUpdate: NoAction)
+  usuario           Usuario                    @relation(fields: [usuarioId], references: [id], onUpdate: NoAction)
+  resultados        ApuracaoResultadoDesafio[]
+  classificacoes    ClassificacaoGrupo[]
+  desempatesManuais DesempateManual[]
+
+  @@unique([id, eventoId], map: "uq_apuracao_evento")
+  @@unique([eventoId, versao], map: "uq_apuracao_evento_versao")
+  @@unique([eventoId], map: "ux_apuracao_oficial", where: raw("((status)::text = 'OFICIAL'::text)"))
+  @@map("apuracao")
+}
+
+model ApuracaoResultadoDesafio {
+  apuracaoId  Int     @map("id_apuracao")
+  resultadoId Int     @map("id_resultado")
+  desafioId   Int     @map("id_desafio")
+  grupoId     Int     @map("id_grupo")
+  colocacao   Int?
+  ausente     Boolean
+  pontos      Int?
+
+  apuracao  Apuracao         @relation(fields: [apuracaoId], references: [id], onUpdate: NoAction)
+  resultado ResultadoDesafio @relation(fields: [resultadoId], references: [id], onUpdate: NoAction)
+
+  @@id([apuracaoId, resultadoId])
+  @@unique([apuracaoId, desafioId, grupoId], map: "uq_apuracao_resultado_grupo")
+  @@map("apuracao_resultado_desafio")
+}
+
+model ClassificacaoGrupo {
+  apuracaoId         Int     @map("id_apuracao")
+  grupoId            Int     @map("id_grupo")
+  eventoId           Int     @map("id_evento")
+  posicao            Int
+  pontosDesafios     Int     @default(0) @map("pontos_desafios")
+  pontosBonificacoes Int     @default(0) @map("pontos_bonificacoes")
+  pontosPenalidades  Int     @default(0) @map("pontos_penalidades")
+  pontosTotal        Int     @map("pontos_total")
+  desempateManual    Boolean @default(false) @map("desempate_manual")
+
+  apuracao  Apuracao           @relation(fields: [apuracaoId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_classificacao_apuracao_evento")
+  grupo     Grupo              @relation(fields: [grupoId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_classificacao_grupo_evento")
+  criterios ApuracaoCriterio[]
+
+  @@id([apuracaoId, grupoId])
+  @@unique([apuracaoId, posicao], map: "uq_classificacao_posicao")
+  @@map("classificacao_grupo")
+}
+
+model ApuracaoCriterio {
+  apuracaoId          Int      @map("id_apuracao")
+  criterioDesempateId Int      @map("id_criterio_desempate")
+  grupoId             Int      @map("id_grupo")
+  valor               Decimal? @db.Decimal(12, 4)
+  ordem               Int
+  resultado           String?  @db.VarChar(30)
+
+  criterioDesempate  CriterioDesempate  @relation(fields: [criterioDesempateId], references: [id], onUpdate: NoAction)
+  classificacaoGrupo ClassificacaoGrupo @relation(fields: [apuracaoId, grupoId], references: [apuracaoId, grupoId], onUpdate: NoAction, map: "fk_apuracao_criterio_classificacao")
+
+  @@id([apuracaoId, criterioDesempateId, grupoId])
+  @@map("apuracao_criterio")
+}
+
+// ---------------------------------------------------------------------
+// Desempate manual append-only (V11)
+// ---------------------------------------------------------------------
+
+model DesempateManual {
+  id                Int      @id @default(autoincrement()) @map("id_desempate")
+  eventoId          Int      @map("id_evento")
+  grupoId           Int      @map("id_grupo")
+  apuracaoId        Int      @map("id_apuracao")
+  decisaoAnteriorId Int?     @map("id_decisao_anterior")
+  operacaoId        String   @map("id_operacao") @db.Uuid
+  posicao           Int
+  justificativa     String   @db.VarChar(500)
+  usuarioId         Int      @map("id_usuario")
+  dataHora          DateTime @default(now()) @map("data_hora") @db.Timestamptz(6)
+  vigente           Boolean  @default(true)
+
+  evento              Evento            @relation(fields: [eventoId], references: [id], onUpdate: NoAction, map: "fk_desempate_evento")
+  grupo               Grupo             @relation(fields: [grupoId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_desempate_grupo_evento")
+  apuracao            Apuracao          @relation(fields: [apuracaoId, eventoId], references: [id, eventoId], onUpdate: NoAction, map: "fk_desempate_apuracao_evento")
+  usuario             Usuario           @relation(fields: [usuarioId], references: [id], onUpdate: NoAction)
+  decisaoAnterior     DesempateManual?  @relation("DecisaoAnterior", fields: [decisaoAnteriorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_desempate_anterior")
+  decisoesPosteriores DesempateManual[] @relation("DecisaoAnterior")
+
+  @@unique([eventoId, grupoId], map: "uq_desempate_grupo_vigente", where: raw("vigente"))
+  @@unique([eventoId, apuracaoId, posicao], map: "uq_desempate_posicao_vigente", where: raw("vigente"))
+  @@map("desempate_manual")
 }

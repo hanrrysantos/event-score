@@ -115,7 +115,7 @@ A maior parte dos testes deve ser unitária, principalmente nos cálculos de pon
 
 ## Migrações
 
-O `prisma/schema.prisma` é a fonte de verdade do banco. Detalhes no [ADR 0001](docs/adr/0001-orm-prisma.md).
+O `prisma/schema.prisma` descreve as tabelas para o Prisma Client. CHECKs, índices de expressão, triggers, funções e views existem só no SQL das migrações em `prisma/migrations/`, porque o Prisma não os representa. Detalhes no [ADR 0001](docs/adr/0001-orm-prisma.md).
 
 Para alterar o esquema:
 
@@ -127,6 +127,7 @@ Para alterar o esquema:
 Regras:
 
 - **Nunca edite uma migração já aplicada.** Para corrigir, crie uma nova.
+- Antes de aplicar, leia o `migration.sql` gerado: ele não pode remover CHECKs, índices, triggers, funções nem views criados pelas migrações da equipe de banco.
 - Restrições que o Prisma não expressa (ex.: `CHECK`) são escritas à mão: `npx prisma migrate dev --create-only`, edite o `migration.sql` gerado e depois rode `npm run db:migrate`.
 - Nenhum SQL é aplicado no banco fora das migrações.
 
