@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class EventoResumoDto {
   @ApiProperty({
     description: 'Identificador numérico único do evento.',
+    type: 'integer',
     example: 1,
   })
   id: number;
@@ -15,6 +16,7 @@ export class EventoResumoDto {
 
   @ApiProperty({
     description: 'Ano de realização do evento.',
+    type: 'integer',
     example: 2026,
   })
   ano: number;
@@ -41,6 +43,7 @@ export class EventoResumoDto {
 
   @ApiProperty({
     description: 'Quantidade de dias de competição configurada.',
+    type: 'integer',
     example: 3,
     minimum: 1,
   })

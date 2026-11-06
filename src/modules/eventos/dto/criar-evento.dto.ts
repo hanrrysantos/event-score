@@ -26,6 +26,7 @@ export class CriarEventoDto {
 
   @ApiProperty({
     description: 'Ano de realização da competição.',
+    type: 'integer',
     example: 2026,
     minimum: 2000,
     maximum: 2100,
@@ -59,6 +60,7 @@ export class CriarEventoDto {
 
   @ApiProperty({
     description: 'Quantidade configurada de dias de competição.',
+    type: 'integer',
     example: 3,
     minimum: 1,
   })
