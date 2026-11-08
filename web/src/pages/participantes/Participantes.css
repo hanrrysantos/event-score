@@ -36,38 +36,6 @@
   font-weight: 700;
 }
 
-.contagem {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.contagem .cartao {
-  display: grid;
-  gap: 4px;
-}
-
-.contagem small {
-  color: var(--texto-suave);
-}
-
-.contagem strong {
-  font-size: 40px;
-  line-height: 1.1;
-}
-
-.contagem-ok {
-  color: #1b5e20;
-}
-
-.contagem-erro {
-  color: var(--erro);
-}
-
-.barra-erro span {
-  background: var(--erro);
-}
-
 .interruptor-texto {
   display: flex;
   align-items: center;
@@ -79,25 +47,6 @@
   width: 18px;
   height: 18px;
   accent-color: var(--preto);
-}
-
-.pessoa {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--preto);
-  color: var(--branco);
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .selo {

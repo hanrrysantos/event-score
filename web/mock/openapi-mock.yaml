@@ -173,6 +173,66 @@ paths:
         '204':
           description: Excluído
 
+  /eventos/{eventoId}/dias/{diaId}/presencas:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: diaId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Presença de todos os participantes no dia (RF07)
+      parameters:
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Grade do dia
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, resumo]
+                properties:
+                  dados:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Presenca'
+                  resumo:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      presentes: { type: integer }
+                      ausentes: { type: integer }
+              example:
+                dados:
+                  - { participanteId: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupoId: 1, grupo: Alfa, presente: true }
+                  - { participanteId: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupoId: 1, grupo: Alfa, presente: true }
+                  - { participanteId: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupoId: 2, grupo: Beta, presente: false }
+                  - { participanteId: 4, matricula: '2026-104', nome: Camila Ferreira, turma: ES 2026.2, grupoId: 2, grupo: Beta, presente: true }
+                  - { participanteId: 5, matricula: '2026-105', nome: Rafael Nogueira, turma: CC 2026.2, grupoId: 1, grupo: Alfa, presente: false }
+                resumo: { total: 5, presentes: 3, ausentes: 2 }
+
+  /eventos/{eventoId}/dias/{diaId}/presencas/{participanteId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: diaId, in: path, required: true, schema: { type: integer } }
+      - { name: participanteId, in: path, required: true, schema: { type: integer } }
+    put:
+      summary: Marca a presença de um participante no dia (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [presente]
+              properties:
+                presente: { type: boolean }
+      responses:
+        '200':
+          description: Presença gravada
+          content:
+            application/json:
+              example: { participanteId: 3, presente: true }
+
   /eventos/{eventoId}/participantes/importacao/previa:
     parameters:
       - $ref: '#/components/parameters/EventoId'
@@ -350,6 +410,17 @@ components:
         turma: { type: string }
         grupoId: { type: integer }
         grupo: { type: string }
+    Presenca:
+      type: object
+      required: [participanteId, matricula, nome, turma, grupoId, grupo, presente]
+      properties:
+        participanteId: { type: integer }
+        matricula: { type: string }
+        nome: { type: string }
+        turma: { type: string }
+        grupoId: { type: integer }
+        grupo: { type: string }
+        presente: { type: boolean }
     SalvarDesafio:
       type: object
       properties:

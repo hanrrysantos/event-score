@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Configuracao from './pages/configuracao/Configuracao';
 import Desafios from './pages/desafios/Desafios';
 import Eventos from './pages/eventos/Eventos';
+import Frequencia from './pages/frequencia/Frequencia';
 import Grupos from './pages/grupos/Grupos';
 import Participantes from './pages/participantes/Participantes';
 import Login from './pages/Login';
@@ -24,7 +25,6 @@ function EmBreve({ titulo }: { titulo: string }) {
 
 const telas = [
   ['apuracao', 'Apuração individual'],
-  ['frequencia', 'Frequência diária'],
   ['lancamentos', 'Lançamentos'],
   ['relatorios', 'Relatórios'],
 ];
@@ -40,6 +40,7 @@ const router = createBrowserRouter([
       { path: 'grupos', element: <Grupos /> },
       { path: 'desafios', element: <Desafios /> },
       { path: 'participantes', element: <Participantes /> },
+      { path: 'frequencia', element: <Frequencia /> },
       ...telas.map(([path, titulo]) => ({ path, element: <EmBreve titulo={titulo} /> })),
       { path: '*', element: <Navigate to="/evento" replace /> },
     ],
