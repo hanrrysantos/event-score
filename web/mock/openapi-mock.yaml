@@ -116,6 +116,92 @@ paths:
                   diaId: 2
                   pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
 
+  /eventos/{eventoId}/participantes/importacao/previa:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Valida a planilha sem gravar nada (RF04)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Arquivo'
+      responses:
+        '200':
+          description: Prévia da importação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviaImportacao'
+              example:
+                totalLinhas: 6
+                linhasValidas: 3
+                linhasComErro: 3
+                linhas:
+                  - { linha: 1, nome: Lucas Vitorino, matricula: '2026-101', turma: ES 2026.2, grupo: Alpha Red, status: VALIDO, motivoErro: null }
+                  - { linha: 2, nome: Sofia Moreira, matricula: '2026-102', turma: ES 2026.2, grupo: Alpha Red, status: VALIDO, motivoErro: null }
+                  - { linha: 3, nome: Arthur Pires, matricula: '2026-103', turma: CC 2026.2, grupo: Cyber Blue, status: VALIDO, motivoErro: null }
+                  - { linha: 15, nome: Camila Ferreira, matricula: '2026-104', turma: ES 2026.2, grupo: Green Matrix, status: ERRO, motivoErro: Matrícula duplicada }
+                  - { linha: 22, nome: Rafael Nogueira, matricula: '2026-110', turma: CC 2026.2, grupo: Red Phoenix, status: ERRO, motivoErro: Grupo não existe }
+                  - { linha: 40, nome: Pedro Santos, matricula: '2026-115', turma: ES 2026.2, grupo: null, status: ERRO, motivoErro: Grupo obrigatório }
+
+  /eventos/{eventoId}/participantes/importacao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Grava a planilha, só se não houver erro (RF04)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Arquivo'
+      responses:
+        '201':
+          description: Participantes importados. O front não depende do corpo.
+          content:
+            application/json:
+              example: { importados: 71 }
+        '422':
+          description: A planilha tem erros; devolve as linhas
+          content:
+            application/json:
+              example: { statusCode: 422, message: A planilha tem 4 linhas com erro., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/participantes:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Participantes do evento, paginados
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, default: 1 } }
+        - { name: tamanho, in: query, schema: { type: integer, default: 20 } }
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: turma, in: query, schema: { type: string } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Participante'
+                  paginacao:
+                    $ref: '../../docs/openapi/openapi-v0.1.yaml#/components/schemas/PaginacaoMetaDto'
+              example:
+                dados:
+                  - { id: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupoId: 1, grupo: Alpha Red }
+                  - { id: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupoId: 1, grupo: Alpha Red }
+                  - { id: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupoId: 2, grupo: Cyber Blue }
+                paginacao: { pagina: 1, tamanho: 20, totalItens: 72, totalPaginas: 4 }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -172,6 +258,41 @@ components:
                 enum: [MAIOR_PONTUACAO_DESAFIO, MAIOR_SOMA_DESAFIOS, MAIOR_BONIFICACAO, MENOR_PENALIDADE, MAIOR_PRESENCA]
               desafioId: { type: integer, nullable: true }
               descricao: { type: string }
+    Arquivo:
+      type: object
+      required: [arquivo]
+      properties:
+        arquivo: { type: string, format: binary, description: .csv (UTF-8, vírgula ou ponto e vírgula) ou .xlsx, até 5 MB }
+    PreviaImportacao:
+      type: object
+      required: [totalLinhas, linhasValidas, linhasComErro, linhas]
+      properties:
+        totalLinhas: { type: integer }
+        linhasValidas: { type: integer }
+        linhasComErro: { type: integer }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [linha, nome, matricula, turma, grupo, status, motivoErro]
+            properties:
+              linha: { type: integer }
+              nome: { type: string, nullable: true }
+              matricula: { type: string, nullable: true }
+              turma: { type: string, nullable: true }
+              grupo: { type: string, nullable: true }
+              status: { type: string, enum: [VALIDO, ERRO] }
+              motivoErro: { type: string, nullable: true }
+    Participante:
+      type: object
+      required: [id, matricula, nome, turma, grupoId, grupo]
+      properties:
+        id: { type: integer }
+        matricula: { type: string }
+        nome: { type: string }
+        turma: { type: string }
+        grupoId: { type: integer }
+        grupo: { type: string }
     Desafio:
       type: object
       required: [id, nome, descricao, diaId, pontosColocacao]

@@ -54,5 +54,6 @@ export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T
     const corpo = await resposta.json().catch(() => null);
     throw new ApiError(resposta.status, mensagemDeErro(resposta.status, corpo));
   }
-  return (resposta.status === 204 ? undefined : await resposta.json()) as T;
+  const texto = await resposta.text();
+  return (texto ? JSON.parse(texto) : undefined) as T;
 }

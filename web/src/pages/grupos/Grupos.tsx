@@ -2,17 +2,13 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api, type Schemas } from '../../api/client';
 import { useLayout } from '../../components/Layout';
+import { iniciais } from '../../texto';
 import './Grupos.css';
 
 type Grupo = Schemas['GrupoResumoDto'];
 
 // Paleta do mock; "Outra cor" abre o seletor nativo, porque a quantidade de grupos é livre e a cor é única no evento.
 const PALETA = ['#C0392B', '#1D4ED8', '#15803D', '#B7791F', '#6B46C1', '#18181B'];
-
-const iniciais = (nome: string) => {
-  const partes = nome.trim().split(/\s+/);
-  return (partes.length > 1 ? partes[0][0] + partes[1][0] : partes[0].slice(0, 2)).toUpperCase();
-};
 
 // Texto preto em cores claras, branco nas escuras.
 const corDoTexto = (hex: string) => {
