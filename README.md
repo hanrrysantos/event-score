@@ -57,7 +57,7 @@ Em homologação e produção não se usa o seed, que traz dados fictícios e se
 npm run db:admin
 ```
 
-O script usa a versão compilada em `dist/`, então não precisa das dependências de desenvolvimento. Se o e-mail já existir, ele atualiza o nome e a senha, o que serve também para trocar a senha.
+O `db:admin` recusa a senha de exemplo do `.env.example` (`troque-esta-senha`), que é pública; ela só é aceita pelo seed de desenvolvimento. O script usa a versão compilada em `dist/`, então não precisa das dependências de desenvolvimento. Se o e-mail já existir, ele atualiza o nome e a senha, o que serve também para trocar a senha.
 
 Para conferir se está tudo funcionando:
 
@@ -112,7 +112,7 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `POSTGRES_PORT` | Compose | Porta exposta na sua máquina (padrão: `5432`) |
 | `ADMIN_NOME` | Seed e `db:admin` | Nome do administrador |
 | `ADMIN_EMAIL` | Seed e `db:admin` | E-mail de login do administrador (gravado em minúsculas) |
-| `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres |
+| `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres. O `db:admin` recusa o valor de exemplo do `.env.example` |
 
 `DATABASE_URL` deve usar o mesmo usuário, senha, porta e banco das variáveis `POSTGRES_*`.
 

@@ -1,4 +1,10 @@
-import { criarOuAtualizarAdmin, lerAdminEnv, PERFIL_ADMIN } from './admin.js';
+import { readFileSync } from 'node:fs';
+import {
+  criarOuAtualizarAdmin,
+  lerAdminEnv,
+  PERFIL_ADMIN,
+  SENHA_PADRAO_DESENVOLVIMENTO,
+} from './admin.js';
 
 const envValido = {
   ADMIN_NOME: ' Administrador ',
@@ -22,6 +28,33 @@ describe('lerAdminEnv', () => {
   ])('recusa variável ausente ou inválida: %o', (alteracao) => {
     expect(() => lerAdminEnv({ ...envValido, ...alteracao })).toThrow(
       /Variáveis do administrador inválidas/,
+    );
+  });
+});
+
+describe('senha de exemplo do .env.example', () => {
+  const envComSenhaPadrao = {
+    ...envValido,
+    ADMIN_SENHA: SENHA_PADRAO_DESENVOLVIMENTO,
+  };
+
+  it('é recusada por padrão, que é o caso do db:admin usado em produção', () => {
+    expect(() => lerAdminEnv(envComSenhaPadrao)).toThrow(
+      /valor de exemplo do \.env\.example/,
+    );
+  });
+
+  it('é aceita só quando o seed de desenvolvimento permite', () => {
+    expect(
+      lerAdminEnv(envComSenhaPadrao, { permitirSenhaPadrao: true }).ADMIN_SENHA,
+    ).toBe(SENHA_PADRAO_DESENVOLVIMENTO);
+  });
+
+  it('é a mesma do .env.example, para a recusa não ficar desatualizada', () => {
+    const envExample = readFileSync('.env.example', 'utf8');
+
+    expect(envExample).toMatch(
+      new RegExp(`^ADMIN_SENHA=${SENHA_PADRAO_DESENVOLVIMENTO}$`, 'm'),
     );
   });
 });

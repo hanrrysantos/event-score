@@ -20,12 +20,34 @@ export const adminEnvSchema = z.object({
 
 export type AdminEnv = z.infer<typeof adminEnvSchema>;
 
-export function lerAdminEnv(env: Record<string, unknown>): AdminEnv {
+// Senha de exemplo do .env.example. É pública (está no repositório), então só
+// o seed de desenvolvimento pode usá-la; o provisionamento (db:admin) recusa.
+export const SENHA_PADRAO_DESENVOLVIMENTO = 'troque-esta-senha';
+
+export interface OpcoesLeituraAdmin {
+  // true só no seed de desenvolvimento. Padrão false: o db:admin, que é o
+  // comando usado em homologação e produção, recusa a senha de exemplo.
+  permitirSenhaPadrao?: boolean;
+}
+
+export function lerAdminEnv(
+  env: Record<string, unknown>,
+  { permitirSenhaPadrao = false }: OpcoesLeituraAdmin = {},
+): AdminEnv {
   const result = adminEnvSchema.safeParse(env);
 
   if (!result.success) {
     throw new Error(
       `Variáveis do administrador inválidas:\n${z.prettifyError(result.error)}`,
+    );
+  }
+
+  if (
+    !permitirSenhaPadrao &&
+    result.data.ADMIN_SENHA === SENHA_PADRAO_DESENVOLVIMENTO
+  ) {
+    throw new Error(
+      'ADMIN_SENHA ainda está com o valor de exemplo do .env.example, que é público. Defina uma senha própria antes de criar o administrador.',
     );
   }
 
