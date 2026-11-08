@@ -161,9 +161,7 @@ describe('DiasEventoController (e2e)', () => {
 
     if (!dependencyTablesAvailable) {
       await request(app.getHttpServer())
-        .delete(
-          `/api/v1/eventos/${fixture.id}/dias/${presenceDay.body.id}`,
-        )
+        .delete(`/api/v1/eventos/${fixture.id}/dias/${presenceDay.body.id}`)
         .expect(503)
         .expect(({ body }) => {
           expect(body.message).toBe(
@@ -198,9 +196,7 @@ describe('DiasEventoController (e2e)', () => {
       .delete(`/api/v1/eventos/${fixture.id}/dias/${presenceDay.body.id}`)
       .expect(409);
     await request(app.getHttpServer())
-      .delete(
-        `/api/v1/eventos/${fixture.id}/dias/${challengeDay.body.id}`,
-      )
+      .delete(`/api/v1/eventos/${fixture.id}/dias/${challengeDay.body.id}`)
       .expect(409);
   });
 });
