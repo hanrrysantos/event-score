@@ -30,6 +30,7 @@ API_URL=http://localhost:3000 npm run dev
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Verifica os tipos e gera `dist/` |
 | `npm run lint` | oxlint |
+| `npm test` | Testes das regras puras (`*.test.ts`), com o executor de testes do próprio Node |
 | `npm run mock` | Mock da API com Prism, a partir do OpenAPI |
 | `npm run api:tipos` | Regera `src/api/schema.d.ts` quando o OpenAPI mudar |
 

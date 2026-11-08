@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet } from 'react-router';
 import { api, token, type Schemas } from '../api/client';
 
@@ -17,13 +17,16 @@ export default function Layout() {
   const [eventoAtivo, setEventoAtivo] = useState<string>();
   const logado = Boolean(token.ler());
 
-  useEffect(() => {
-    if (!logado) return;
+  const recarregarEventoAtivo = useCallback(() => {
     // 404 = nenhum evento ativo; a marca volta para "EventScore".
     api<Schemas['EventoDetalheDto']>('/eventos/ativo')
       .then((evento) => setEventoAtivo(evento.nome))
       .catch(() => setEventoAtivo(undefined));
-  }, [logado]);
+  }, []);
+
+  useEffect(() => {
+    if (logado) recarregarEventoAtivo();
+  }, [logado, recarregarEventoAtivo]);
 
   if (!logado) return <Navigate to="/login" replace />;
 
@@ -45,7 +48,9 @@ export default function Layout() {
           Sair
         </button>
       </nav>
-      <Outlet />
+      <Outlet context={{ recarregarEventoAtivo } satisfies ContextoLayout} />
     </div>
   );
 }
+
+export type ContextoLayout = { recarregarEventoAtivo: () => void };

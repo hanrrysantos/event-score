@@ -147,6 +147,76 @@ textarea {
   color: var(--preto);
 }
 
+.btn-cinza {
+  background: var(--campo);
+  color: var(--preto);
+}
+
+.btn-contorno {
+  background: none;
+  color: var(--preto);
+  border-color: var(--texto-suave);
+  padding: 10px 20px;
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* Modal (<dialog>) */
+.modal {
+  width: min(640px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-cartao);
+  background: var(--cartao);
+  color: var(--texto);
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  background: var(--preto);
+  color: var(--branco);
+}
+
+.modal-topo h2 {
+  font-size: 18px;
+}
+
+.modal-fechar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: #2a2a2a;
+  color: var(--branco);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.modal-corpo {
+  display: grid;
+  gap: 18px;
+  padding: 24px 28px 28px;
+}
+
+.modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .campo {
   display: grid;
   gap: 6px;
