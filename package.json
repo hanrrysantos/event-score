@@ -29,6 +29,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:sync": "npm run db:deploy && npm run db:generate",
     "db:studio": "prisma studio",
+    "db:admin": "node --env-file-if-exists=.env dist/scripts/criar-admin.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
