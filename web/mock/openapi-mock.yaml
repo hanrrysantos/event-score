@@ -415,6 +415,55 @@ paths:
             application/json:
               example: { statusCode: 409, message: A classificação tem empate pendente; registre o desempate antes da apuração., error: Conflict }
 
+  # Relatórios (RF15, RF17): arquivo no corpo, nome no Content-Disposition
+  /eventos/{eventoId}/relatorios/parcial:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - $ref: '#/components/parameters/Formato'
+    get:
+      summary: Relatório parcial por grupo, só com os desafios já lançados
+      responses:
+        '200':
+          $ref: '#/components/responses/Arquivo'
+
+  /eventos/{eventoId}/relatorios/final:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - $ref: '#/components/parameters/Formato'
+    get:
+      summary: Relatório final por participante (exige token, RNF03)
+      responses:
+        '200':
+          $ref: '#/components/responses/Arquivo'
+        '409':
+          description: Empate pendente
+          content:
+            application/json:
+              example: { statusCode: 409, message: A classificação tem empate pendente; registre o desempate antes do relatório final., error: Conflict }
+
+  /eventos/{eventoId}/relatorios/final/previa:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Prévia do relatório final, agrupada por turma
+      parameters:
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Turmas
+          content:
+            application/json:
+              example:
+                - turma: CC 2026.2
+                  totalParticipantes: 1
+                  participantes:
+                    - { matricula: '2026-103', nome: Arthur Pires, grupo: Beta, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: true }], pontoExtra: 0.8 }
+                - turma: ES 2026.2
+                  totalParticipantes: 2
+                  participantes:
+                    - { matricula: '2026-101', nome: Lucas Vitorino, grupo: Alfa, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: true }], pontoExtra: 1.0 }
+                    - { matricula: '2026-102', nome: Sofia Moreira, grupo: Alfa, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: false }], pontoExtra: 0.5 }
+
   /eventos/{eventoId}/dias/{diaId}/presencas:
     parameters:
       - $ref: '#/components/parameters/EventoId'
@@ -567,7 +616,26 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    Arquivo:
+      description: Arquivo do relatório
+      headers:
+        Content-Disposition:
+          schema: { type: string }
+          example: attachment; filename="relatorio-arena-comp-2026.pdf"
+      content:
+        application/pdf:
+          schema: { type: string, format: binary }
+          example: '%PDF-1.4 relatório de exemplo do mock'
+        application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+          schema: { type: string, format: binary }
+          example: planilha de exemplo do mock
   parameters:
+    Formato:
+      name: formato
+      in: query
+      required: true
+      schema: { type: string, enum: [PDF, XLSX] }
     EventoId:
       name: eventoId
       in: path

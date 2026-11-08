@@ -8,26 +8,11 @@ import Desafios from './pages/desafios/Desafios';
 import Eventos from './pages/eventos/Eventos';
 import Frequencia from './pages/frequencia/Frequencia';
 import Grupos from './pages/grupos/Grupos';
-import Participantes from './pages/participantes/Participantes';
 import Lancamentos from './pages/lancamentos/Lancamentos';
 import Login from './pages/Login';
+import Participantes from './pages/participantes/Participantes';
+import Relatorios from './pages/relatorios/Relatorios';
 import './index.css';
-
-// shortcut: telas ainda não feitas mostram só o título; trocar por cada tela conforme ficar pronta.
-function EmBreve({ titulo }: { titulo: string }) {
-  return (
-    <header className="hero">
-      <div>
-        <h1>{titulo}</h1>
-        <p>Tela em construção.</p>
-      </div>
-    </header>
-  );
-}
-
-const telas = [
-  ['relatorios', 'Relatórios'],
-];
 
 const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
@@ -43,7 +28,7 @@ const router = createBrowserRouter([
       { path: 'apuracao', element: <Apuracao /> },
       { path: 'frequencia', element: <Frequencia /> },
       { path: 'lancamentos', element: <Lancamentos /> },
-      ...telas.map(([path, titulo]) => ({ path, element: <EmBreve titulo={titulo} /> })),
+      { path: 'relatorios', element: <Relatorios /> },
       { path: '*', element: <Navigate to="/evento" replace /> },
     ],
   },
