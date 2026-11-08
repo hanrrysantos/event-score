@@ -43,11 +43,9 @@ describe('criarOuAtualizarAdmin', () => {
   it('cria o administrador com perfil ADMIN e a senha com hash', async () => {
     const prisma = prismaFalso(null);
 
-    const resultado = await criarOuAtualizarAdmin(
-      prisma as never,
-      admin,
+    const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
       hasher,
-    );
+    });
 
     expect(resultado).toBe('criado');
     expect(hasher.hash).toHaveBeenCalledWith('senha-forte-123');
@@ -72,11 +70,9 @@ describe('criarOuAtualizarAdmin', () => {
   it('atualiza nome, senha, perfil e ativo quando o e-mail já existe', async () => {
     const prisma = prismaFalso({ id: 7 });
 
-    const resultado = await criarOuAtualizarAdmin(
-      prisma as never,
-      admin,
+    const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
       hasher,
-    );
+    });
 
     expect(resultado).toBe('atualizado');
     expect(prisma.usuario.update).toHaveBeenCalledWith({
@@ -89,5 +85,32 @@ describe('criarOuAtualizarAdmin', () => {
       },
     });
     expect(prisma.usuario.create).not.toHaveBeenCalled();
+  });
+
+  it('mantém o administrador existente sem regravar a senha quando atualizarExistente é false', async () => {
+    const prisma = prismaFalso({ id: 7 });
+    hasher.hash.mockClear();
+
+    const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
+      atualizarExistente: false,
+      hasher,
+    });
+
+    expect(resultado).toBe('mantido');
+    expect(hasher.hash).not.toHaveBeenCalled();
+    expect(prisma.usuario.update).not.toHaveBeenCalled();
+    expect(prisma.usuario.create).not.toHaveBeenCalled();
+  });
+
+  it('cria o administrador mesmo com atualizarExistente false quando ele não existe', async () => {
+    const prisma = prismaFalso(null);
+
+    const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
+      atualizarExistente: false,
+      hasher,
+    });
+
+    expect(resultado).toBe('criado');
+    expect(prisma.usuario.create).toHaveBeenCalledTimes(1);
   });
 });

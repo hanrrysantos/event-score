@@ -47,7 +47,7 @@ npm run start:dev
 npm run db:seed
 ```
 
-O seed cria o evento Arena Comp 2026 (19 e 20/11), seus dois dias, os seis grupos, o fator de presença e o administrador definido em `ADMIN_*` no `.env`. Ele pode rodar várias vezes: insere só o que falta e não altera o que já existe. Para recomeçar do zero, use `npx prisma migrate reset` e rode o seed de novo.
+O seed cria o evento Arena Comp 2026 (19 e 20/11), seus dois dias, os seis grupos, o fator de presença e o administrador definido em `ADMIN_*` no `.env`. Ele pode rodar várias vezes: insere só o que falta e não altera o que já existe, inclusive o administrador (para trocar a senha, use `npm run db:admin`). Para recomeçar do zero, use `npx prisma migrate reset` e rode o seed de novo.
 
 ### Administrador no servidor
 

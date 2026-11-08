@@ -32,28 +32,42 @@ export function lerAdminEnv(env: Record<string, unknown>): AdminEnv {
   return result.data;
 }
 
-export type ResultadoAdmin = 'criado' | 'atualizado';
+export type ResultadoAdmin = 'criado' | 'atualizado' | 'mantido';
 
-// Cria o administrador ou, se o e-mail já existir (sem diferenciar maiúsculas),
-// atualiza nome e senha e garante perfil ADMIN ativo. Rodar de novo serve para
-// trocar a senha no servidor.
+export interface OpcoesAdmin {
+  // true (padrão): se o e-mail já existir, regrava nome e senha e garante perfil
+  // ADMIN ativo; é o que permite trocar a senha no servidor com `db:admin`.
+  // false: mantém o usuário existente como está; usado pelo seed, para não
+  // desfazer uma senha trocada localmente.
+  atualizarExistente?: boolean;
+  hasher?: Pick<PasswordHashService, 'hash'>;
+}
+
+// Cria o administrador ou trata o já existente (e-mail sem diferenciar
+// maiúsculas) conforme `atualizarExistente`.
 export async function criarOuAtualizarAdmin(
   prisma: Pick<PrismaClient, 'usuario'>,
   admin: AdminEnv,
-  hasher: Pick<PasswordHashService, 'hash'> = new PasswordHashService(),
+  {
+    atualizarExistente = true,
+    hasher = new PasswordHashService(),
+  }: OpcoesAdmin = {},
 ): Promise<ResultadoAdmin> {
-  const senhaHash = await hasher.hash(admin.ADMIN_SENHA);
-  const dados = {
-    nome: admin.ADMIN_NOME,
-    senhaHash,
-    perfil: PERFIL_ADMIN,
-    ativo: true,
-  };
-
   const existente = await prisma.usuario.findFirst({
     where: { email: { equals: admin.ADMIN_EMAIL, mode: 'insensitive' } },
     select: { id: true },
   });
+
+  if (existente && !atualizarExistente) {
+    return 'mantido';
+  }
+
+  const dados = {
+    nome: admin.ADMIN_NOME,
+    senhaHash: await hasher.hash(admin.ADMIN_SENHA),
+    perfil: PERFIL_ADMIN,
+    ativo: true,
+  };
 
   if (existente) {
     await prisma.usuario.update({ where: { id: existente.id }, data: dados });
