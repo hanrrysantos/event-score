@@ -104,7 +104,7 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 │   └── adr/             # Registros de decisões técnicas
 ├── prisma/
 │   ├── schema.prisma    # Models do Prisma Client (tabelas e relações)
-│   └── migrations/      # Migrações SQL versionadas (V1 a V11 da equipe de banco)
+│   └── migrations/      # Migrações SQL (V1 a V11 da equipe de banco; V12 em diante revisadas por ela)
 ├── src/
 │   ├── main.ts          # Ponto de entrada
 │   ├── app.module.ts    # Módulo raiz
