@@ -135,6 +135,7 @@ textarea {
   cursor: pointer;
   background: var(--preto);
   color: var(--branco);
+  text-decoration: none;
 }
 
 .btn:disabled {
@@ -388,4 +389,44 @@ textarea {
   color: var(--branco);
   font-size: 11px;
   font-weight: 700;
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filtros input,
+.filtros select {
+  padding: 10px 16px;
+  border-radius: var(--raio-pilula);
+  border: 1px solid var(--borda);
+  background: var(--campo);
+}
+
+.contagem-3 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.pendentes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 2px solid var(--erro);
+}
+
+.sub {
+  display: block;
+  color: var(--texto-suave);
 }

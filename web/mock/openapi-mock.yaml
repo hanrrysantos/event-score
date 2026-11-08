@@ -385,6 +385,36 @@ paths:
             application/json:
               example: { posicoes: [{ grupoId: 2, posicao: 1 }, { grupoId: 1, posicao: 2 }], justificativa: Sorteio na frente das equipes, responsavel: Administrador Arena, dataHora: '2026-11-24T20:10:00Z' }
 
+  /eventos/{eventoId}/apuracao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Apuração individual, calculada na consulta (RF16)
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, default: 1 } }
+        - { name: tamanho, in: query, schema: { type: integer, default: 20 } }
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: turma, in: query, schema: { type: string } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Ponto extra de cada participante
+          content:
+            application/json:
+              example:
+                dados:
+                  - { participanteId: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupo: Alfa, colocacaoGrupo: 1, pontoExtraGrupo: 1.0, diasPresentes: 2, diasTotais: 2, fator: 1.0, pontoExtra: 1.0 }
+                  - { participanteId: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupo: Alfa, colocacaoGrupo: 1, pontoExtraGrupo: 1.0, diasPresentes: 1, diasTotais: 2, fator: 0.5, pontoExtra: 0.5 }
+                  - { participanteId: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupo: Beta, colocacaoGrupo: 2, pontoExtraGrupo: 0.8, diasPresentes: 2, diasTotais: 2, fator: 1.0, pontoExtra: 0.8 }
+                  - { participanteId: 4, matricula: '2026-115', nome: Pedro Santos, turma: ES 2026.2, grupo: Beta, colocacaoGrupo: 2, pontoExtraGrupo: 0.8, diasPresentes: 0, diasTotais: 2, fator: 0.0, pontoExtra: 0.0 }
+                paginacao: { pagina: 1, tamanho: 20, totalItens: 72, totalPaginas: 4 }
+                resumo: { totalParticipantes: 72, assiduidade: 0.924, aptos: 68 }
+        '409':
+          description: Classificação com empate pendente
+          content:
+            application/json:
+              example: { statusCode: 409, message: A classificação tem empate pendente; registre o desempate antes da apuração., error: Conflict }
+
   /eventos/{eventoId}/dias/{diaId}/presencas:
     parameters:
       - $ref: '#/components/parameters/EventoId'

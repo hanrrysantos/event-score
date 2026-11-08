@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import Layout from './components/Layout';
+import Apuracao from './pages/apuracao/Apuracao';
 import Configuracao from './pages/configuracao/Configuracao';
 import Desafios from './pages/desafios/Desafios';
 import Eventos from './pages/eventos/Eventos';
@@ -25,7 +26,6 @@ function EmBreve({ titulo }: { titulo: string }) {
 }
 
 const telas = [
-  ['apuracao', 'Apuração individual'],
   ['relatorios', 'Relatórios'],
 ];
 
@@ -40,6 +40,7 @@ const router = createBrowserRouter([
       { path: 'grupos', element: <Grupos /> },
       { path: 'desafios', element: <Desafios /> },
       { path: 'participantes', element: <Participantes /> },
+      { path: 'apuracao', element: <Apuracao /> },
       { path: 'frequencia', element: <Frequencia /> },
       { path: 'lancamentos', element: <Lancamentos /> },
       ...telas.map(([path, titulo]) => ({ path, element: <EmBreve titulo={titulo} /> })),

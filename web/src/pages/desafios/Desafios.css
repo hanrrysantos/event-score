@@ -47,11 +47,6 @@
   text-align: right;
 }
 
-.desafio-descricao {
-  display: block;
-  color: var(--texto-suave);
-}
-
 .desafio-linha-acoes {
   display: flex;
   justify-content: flex-end;

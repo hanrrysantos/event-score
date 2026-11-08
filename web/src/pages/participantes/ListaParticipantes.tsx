@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, type Schemas } from '../../api/client';
+import Paginacao from '../../components/Paginacao';
 
 type Participante = { id: number; matricula: string; nome: string; turma: string; grupoId: number; grupo: string };
 type Pagina = { dados: Participante[]; paginacao: Schemas['PaginacaoMetaDto'] };
@@ -89,19 +90,7 @@ export default function ListaParticipantes({ eventoId, versao }: { eventoId: num
         </div>
       )}
 
-      {meta && meta.totalPaginas > 1 && (
-        <nav className="paginacao" aria-label="Páginas">
-          <button className="btn btn-cinza" disabled={meta.pagina <= 1} onClick={() => setFiltro({ ...filtro, pagina: meta.pagina - 1 })}>
-            Anterior
-          </button>
-          <span>
-            Página {meta.pagina} de {meta.totalPaginas}
-          </span>
-          <button className="btn btn-cinza" disabled={meta.pagina >= meta.totalPaginas} onClick={() => setFiltro({ ...filtro, pagina: meta.pagina + 1 })}>
-            Próxima
-          </button>
-        </nav>
-      )}
+      <Paginacao meta={meta} irPara={(p) => setFiltro({ ...filtro, pagina: p })} />
     </section>
   );
 }

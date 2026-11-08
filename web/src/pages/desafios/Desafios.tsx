@@ -229,7 +229,7 @@ export default function Desafios() {
                   <tr key={d.id}>
                     <td>
                       <strong>{d.nome}</strong>
-                      {d.descricao && <small className="desafio-descricao">{d.descricao}</small>}
+                      {d.descricao && <small className="sub">{d.descricao}</small>}
                     </td>
                     <td>{nomeDoDia(d.diaId)}</td>
                     <td>{Math.max(0, ...d.pontosColocacao.map((p) => p.pontos))} pts</td>

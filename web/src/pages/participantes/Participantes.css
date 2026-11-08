@@ -77,25 +77,3 @@
 .rodape-acao small {
   color: var(--texto-suave);
 }
-
-.filtros {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filtros input,
-.filtros select {
-  padding: 10px 16px;
-  border-radius: var(--raio-pilula);
-  border: 1px solid var(--borda);
-  background: var(--campo);
-}
-
-.paginacao {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  font-size: 14px;
-}

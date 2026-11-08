@@ -14,19 +14,6 @@
   color: var(--texto);
 }
 
-.contagem-3 {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.pendentes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 2px solid var(--erro);
-}
-
 .presenca {
   display: flex;
   align-items: center;
