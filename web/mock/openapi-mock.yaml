@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: EventScore - mock do front-end
+  version: 0.1.0-front
+  description: >
+    Mock usado só pelo front (npm run mock). As rotas da Sprint 01 vêm do OpenAPI oficial
+    (docs/openapi/openapi-v0.1.yaml). As demais seguem o contrato front x API v0.3 e servem
+    de dados de exemplo até o back-end publicar a versão dele; quando publicar, a rota sai daqui.
+
+servers:
+  - url: http://localhost:3000/api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Sprint 01: OpenAPI oficial do back-end
+  /auth/login:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1auth~1login'
+  /auth/me:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1auth~1me'
+  /eventos:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos'
+  /eventos/ativo:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1ativo'
+  /eventos/{eventoId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}'
+  /eventos/{eventoId}/ativar:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1ativar'
+  /eventos/{eventoId}/dias:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1dias'
+  /eventos/{eventoId}/dias/{diaId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1dias~1{diaId}'
+  /eventos/{eventoId}/grupos:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1grupos'
+  /eventos/{eventoId}/grupos/{grupoId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1grupos~1{grupoId}'
+
+  # Contrato v0.3, ainda fora do OpenAPI oficial
+  /eventos/{eventoId}/configuracao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Configuração de pontuação do evento (RF02)
+      responses:
+        '200':
+          description: Configuração do evento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuracao'
+              example:
+                conversaoPontoExtra:
+                  - { colocacao: 1, pontoExtra: 1.0 }
+                  - { colocacao: 2, pontoExtra: 0.8 }
+                  - { colocacao: 3, pontoExtra: 0.6 }
+                  - { colocacao: 4, pontoExtra: 0.5 }
+                  - { colocacao: 5, pontoExtra: 0.4 }
+                  - { colocacao: 6, pontoExtra: 0.3 }
+                itensBonificacao:
+                  - { id: 1, nome: Uniformização, teto: 10 }
+                  - { id: 2, nome: Grito de guerra, teto: 10 }
+                penalidadeMin: 10
+                penalidadeMax: 50
+                fatoresPresenca:
+                  - { diasPresentes: 2, fator: 1.0 }
+                  - { diasPresentes: 1, fator: 0.5 }
+                  - { diasPresentes: 0, fator: 0.0 }
+                criteriosDesempate:
+                  - { ordem: 1, tipo: MAIOR_PONTUACAO_DESAFIO, desafioId: 3, descricao: Maior pontuação no Hackathon }
+                  - { ordem: 2, tipo: MENOR_PENALIDADE, desafioId: null, descricao: Menos penalidades }
+    put:
+      summary: Salva a configuração inteira (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Configuracao'
+      responses:
+        '200':
+          description: Configuração salva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuracao'
+        '422':
+          description: Regra de negócio
+          content:
+            application/json:
+              example: { statusCode: 422, message: A penalidade mínima não pode ser maior que a máxima., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/desafios:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Desafios do evento (RF05, RF06)
+      responses:
+        '200':
+          description: Lista de desafios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Desafio'
+              example:
+                - id: 1
+                  nome: Perguntas e Respostas
+                  descricao: Rodadas de perguntas sobre computação
+                  diaId: 1
+                  pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
+                - id: 3
+                  nome: Hackathon
+                  descricao: Desenvolvimento em 6 horas
+                  diaId: 2
+                  pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    EventoId:
+      name: eventoId
+      in: path
+      required: true
+      schema: { type: integer }
+  schemas:
+    Configuracao:
+      type: object
+      required: [conversaoPontoExtra, itensBonificacao, penalidadeMin, penalidadeMax, fatoresPresenca, criteriosDesempate]
+      properties:
+        conversaoPontoExtra:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontoExtra]
+            properties:
+              colocacao: { type: integer, minimum: 1 }
+              pontoExtra: { type: number, minimum: 0 }
+        itensBonificacao:
+          type: array
+          items:
+            type: object
+            required: [nome, teto]
+            properties:
+              id: { type: integer, description: Ausente em item novo }
+              nome: { type: string, minLength: 1 }
+              teto: { type: integer, minimum: 1 }
+        penalidadeMin: { type: integer, minimum: 0 }
+        penalidadeMax: { type: integer, minimum: 0 }
+        fatoresPresenca:
+          type: array
+          items:
+            type: object
+            required: [diasPresentes, fator]
+            properties:
+              diasPresentes: { type: integer, minimum: 0 }
+              fator: { type: number, minimum: 0, maximum: 1 }
+        criteriosDesempate:
+          type: array
+          items:
+            type: object
+            required: [ordem, tipo, descricao]
+            properties:
+              ordem: { type: integer, minimum: 1 }
+              tipo:
+                type: string
+                enum: [MAIOR_PONTUACAO_DESAFIO, MAIOR_SOMA_DESAFIOS, MAIOR_BONIFICACAO, MENOR_PENALIDADE, MAIOR_PRESENCA]
+              desafioId: { type: integer, nullable: true }
+              descricao: { type: string }
+    Desafio:
+      type: object
+      required: [id, nome, descricao, diaId, pontosColocacao]
+      properties:
+        id: { type: integer }
+        nome: { type: string }
+        descricao: { type: string }
+        diaId: { type: integer }
+        pontosColocacao:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontos]
+            properties:
+              colocacao: { type: integer }
+              pontos: { type: integer }

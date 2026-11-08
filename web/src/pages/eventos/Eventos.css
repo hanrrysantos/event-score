@@ -41,6 +41,15 @@
   color: var(--texto-suave);
 }
 
+.evento-acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.evento-acoes a {
+  text-decoration: none;
+}
+
 .interruptor {
   display: flex;
   align-items: center;

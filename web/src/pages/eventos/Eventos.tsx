@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { api, type Schemas } from '../../api/client';
 import { useLayout } from '../../components/Layout';
 import EventoModal from './EventoModal';
@@ -81,9 +82,14 @@ export default function Eventos() {
               />
               {evento.ativo ? 'Ativo' : 'Inativo'}
             </label>
-            <button className="btn btn-contorno" onClick={() => setModal(evento)}>
-              Editar
-            </button>
+            <div className="evento-acoes">
+              <Link className="btn btn-contorno" to={`/evento/${evento.id}/configuracao`}>
+                Configurar
+              </Link>
+              <button className="btn btn-contorno" onClick={() => setModal(evento)}>
+                Editar
+              </button>
+            </div>
           </article>
         ))}
       </section>

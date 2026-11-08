@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "mock": "npx -y @stoplight/prism-cli@5 mock ../docs/openapi/openapi-v0.1.yaml -p 4010",
+    "mock": "npx -y @stoplight/prism-cli@5 mock mock/openapi-mock.yaml -p 4010",
     "api:tipos": "npx -y openapi-typescript@7 ../docs/openapi/openapi-v0.1.yaml -o src/api/schema.d.ts",
     "test": "node --test \"src/**/*.test.ts\""
   },

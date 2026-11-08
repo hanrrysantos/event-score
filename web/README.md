@@ -17,6 +17,8 @@ npm run dev
 
 No mock, entre com o exemplo do OpenAPI: `admin@arena.com` / `SenhaForte@2026`.
 
+O mock usa [`mock/openapi-mock.yaml`](mock/openapi-mock.yaml): as rotas da Sprint 01 vêm por referência do OpenAPI oficial (`docs/openapi/`), e as que o back-end ainda não publicou (configuração, desafios...) seguem o contrato front x API v0.3. Quando o back-end publicar uma rota no OpenAPI oficial, troque a cópia daqui pela referência.
+
 Para usar o back-end real (`npm run start:dev` na raiz), rode o front com `API_URL`:
 
 ```bash

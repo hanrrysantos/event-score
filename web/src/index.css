@@ -147,6 +147,18 @@ textarea {
   color: var(--preto);
 }
 
+.btn-escuro {
+  background: none;
+  color: var(--branco);
+  border-color: #5c5c5c;
+  text-decoration: none;
+}
+
+.sucesso {
+  color: #1b5e20;
+  font-weight: 500;
+}
+
 .btn-cinza {
   background: var(--campo);
   color: var(--preto);
