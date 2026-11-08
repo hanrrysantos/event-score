@@ -352,9 +352,13 @@ paths:
             application/json:
               example:
                 dados:
-                  - { posicao: 1, grupoId: 1, grupo: Alfa, cor: '#FF5733', pontosDesafios: 180, bonificacao: 18, penalidade: 0, total: 198, empatado: true }
-                  - { posicao: 1, grupoId: 2, grupo: Beta, cor: '#3380FF', pontosDesafios: 211, bonificacao: 7, penalidade: 20, total: 198, empatado: true }
-                resumo: { desafiosLancados: 2, desafiosTotais: 4, empatesPendentes: [[1, 2]] }
+                  - { posicao: 1, grupoId: 1, grupo: Alfa, cor: '#FF5733', pontosDesafios: 260, bonificacao: 18, penalidade: 0, total: 278, empatado: false }
+                  - { posicao: 2, grupoId: 2, grupo: Beta, cor: '#3380FF', pontosDesafios: 231, bonificacao: 7, penalidade: 20, total: 218, empatado: true }
+                  - { posicao: 2, grupoId: 3, grupo: Gama, cor: '#15803D', pontosDesafios: 210, bonificacao: 8, penalidade: 0, total: 218, empatado: true }
+                  - { posicao: 4, grupoId: 4, grupo: Delta, cor: '#B7791F', pontosDesafios: 190, bonificacao: 10, penalidade: 0, total: 200, empatado: false }
+                  - { posicao: 5, grupoId: 5, grupo: Ômega, cor: '#6B46C1', pontosDesafios: 150, bonificacao: 5, penalidade: 10, total: 145, empatado: true }
+                  - { posicao: 5, grupoId: 6, grupo: Sigma, cor: '#18181B', pontosDesafios: 140, bonificacao: 5, penalidade: 0, total: 145, empatado: true }
+                resumo: { desafiosLancados: 4, desafiosTotais: 4, empatesPendentes: [[2, 3], [5, 6]] }
 
   /eventos/{eventoId}/desempates:
     parameters:

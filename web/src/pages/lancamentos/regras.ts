@@ -78,3 +78,14 @@ export function montarPenalidade(
 /** RF14: os grupos empatados recebem posições seguidas a partir da posição em que empataram, na ordem escolhida. */
 export const posicoesDesempate = (ordem: number[], posicaoInicial: number) =>
   ordem.map((grupoId, i) => ({ grupoId, posicao: posicaoInicial + i }));
+
+/** Posição em que cada empate pendente aconteceu (a menor posição entre os grupos dele). */
+export const posicaoDoEmpate = (grupoIds: number[], classificacao: LinhaClassificacao[]) =>
+  Math.min(...classificacao.filter((l) => grupoIds.includes(l.grupoId)).map((l) => l.posicao));
+
+/**
+ * Um POST /desempates resolve todos os empates pendentes de uma vez, porque um novo envio substitui o
+ * anterior. Recebe a ordem escolhida em cada empate e devolve as posições de todos juntos.
+ */
+export const posicoesDeTodosEmpates = (ordens: number[][], classificacao: LinhaClassificacao[]) =>
+  ordens.flatMap((ordem) => posicoesDesempate(ordem, posicaoDoEmpate(ordem, classificacao)));

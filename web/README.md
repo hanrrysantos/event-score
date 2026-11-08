@@ -81,6 +81,7 @@ As telas seguem os PNGs do mock, com a regra combinada no contrato v0.3: o que o
 | Desafios | Saíram "Critério de avaliação", "Peso" e o status "Validado"; a data virou a escolha de um dos dias do evento | A comissão apura fora do sistema e só a colocação entra; RF05 liga o desafio a um dia |
 | Frequência | Saíram "Salvar folha" e a coluna de horário; cada marcação grava na hora | O DER não guarda horário; RF07 proíbe marcação em lote |
 | Lançamentos | Saíram "Homologar", "Reverter" e o hash; colocação, bônus e classificação viraram três abas | Fora dos requisitos e do DER |
+| Lançamentos | Um formulário de desempate para todos os empates pendentes, com uma justificativa e um só envio | Um novo `POST /desempates` substitui o anterior |
 | Apuração | "Pontos da equipe" virou "Ponto extra do grupo"; "Executar apuração final" virou link para relatórios | O cálculo usa a conversão (RF16) e não grava nada |
 | Relatórios | Saíram "Exportações anteriores" e a ata assinada | Fora dos requisitos e do DER |
 
@@ -92,13 +93,20 @@ As telas seguem os PNGs do mock, com a regra combinada no contrato v0.3: o que o
 - **Edição dos dias do evento.** Os gatilhos do banco não deixam mudar o período com dias fora dele nem repetir data no evento. Por isso, ao editar, o front exclui os dias que mudam de data, altera o evento e recria esses dias, nessa ordem. Se um dia já tiver desafio ou presença, a API recusa e a tela mostra a mensagem.
 - **Frequência sem conexão estável (RNF04).** Marcação que não chega à API por falta de rede fica guardada no navegador (por evento e dia), aparece como "não salvo" e é reenviada quando a conexão volta ou pelo botão "Reenviar agora". O PUT é idempotente, então reenviar não duplica. Recusa da API desfaz a marcação. As pendências ficam só no navegador em que foram feitas.
 - **Download de relatórios com token (RNF03).** Os arquivos são baixados com `fetch` e o cabeçalho `Authorization`, nunca por link aberto; o nome vem do `Content-Disposition`.
+- **Desempate manual (RF14).** Quando `empatesPendentes` traz mais de um empate (por exemplo, no 2º e no 5º lugar), a tela mostra todos no mesmo formulário e envia as posições de todos num só `POST /desempates`, porque um novo envio substitui o anterior. Se uma correção de lançamento desfizer um empate já decidido, a decisão deixa de valer; se o empate mudar de grupos, ele volta em `empatesPendentes` e o formulário reaparece, recomeçando do zero.
 - **Erros.** A tela mostra o `message` do formato padrão do NestJS (uma linha por item quando é lista). Um 401 apaga o token e volta para o login. "Manter conectado" guarda o token no `localStorage`; sem ele, fica no `sessionStorage`.
+
+## Combinado com o back-end depois do contrato v0.3
+
+- **`quantidadeDias`** é enviado no `POST /eventos`: o banco exige o campo e o RF01 pede a quantidade de dias no cadastro (OpenAPI desde o PR #12). O contrato v0.3 dizia que seria contado pelos dias cadastrados.
+- **Excluir grupo** também dá 409 quando o grupo tem participantes, com a mensagem pronta em `message` (ex.: "O grupo tem 12 participantes. Remova ou mova os participantes antes de excluir."). A tela mostra essa mensagem.
+- **Desempate manual** resolve todos os empates de uma vez, num só `POST /desempates` (ver Decisões).
+- **Critérios de desempate** ficam com 4 tipos, sem `MAIOR_PRESENCA`. `MAIOR_SOMA_DESAFIOS` é a soma dos pontos de todos os desafios, sem bônus nem penalidade.
 
 ## Para confirmar com o back-end
 
 Pontos em que o front fez uma suposição ou em que o back-end está diferente do contrato:
 
-- **`quantidadeDias`** é gravado e obrigatório no `POST /eventos`. O contrato dizia que seria contado a partir dos dias cadastrados. O front envia o campo.
 - **`GET /eventos/ativo`** devolve o resumo, sem `temResultado`. A tela de grupos busca também `GET /eventos/{id}` para saber se a edição está travada (RF03).
 - **Lista de participantes:** o front espera `turma`, `grupoId` e `grupo` em cada item, além de `id`, `matricula` e `nome`.
 - **Confirmação da importação:** o front não lê o corpo da resposta, só o status.

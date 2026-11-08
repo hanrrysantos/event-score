@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api } from '../../api/client';
 import { PontoCor } from './comum';
-import { posicoesDesempate, type Classificacao, type LinhaClassificacao } from './regras.ts';
+import { posicaoDoEmpate, posicoesDeTodosEmpates, type Classificacao, type LinhaClassificacao } from './regras.ts';
 
 /** Aba 3 (RF12 a RF14): classificação calculada pela API; o desempate manual só aparece quando os critérios não resolvem. */
 export default function AbaClassificacao({ eventoId }: { eventoId: number }) {
@@ -72,25 +72,34 @@ export default function AbaClassificacao({ eventoId }: { eventoId: number }) {
         </div>
       </section>
 
-      {resumo.empatesPendentes.map((grupoIds) => (
-        <Desempate key={grupoIds.join('-')} base={base} grupos={dados.filter((l) => grupoIds.includes(l.grupoId))} onSalvo={carregar} />
-      ))}
+      {resumo.empatesPendentes.length > 0 && (
+        // A chave muda quando os empates mudam (ex.: uma correção desfez ou alterou um empate), e o formulário recomeça.
+        <Desempate key={resumo.empatesPendentes.map((g) => g.join('-')).join('|')} base={base} empates={resumo.empatesPendentes} classificacao={dados} onSalvo={carregar} />
+      )}
     </>
   );
 }
 
-function Desempate({ base, grupos, onSalvo }: { base: string; grupos: LinhaClassificacao[]; onSalvo: () => void }) {
-  const [ordem, setOrdem] = useState(grupos.map((g) => g.grupoId));
+/**
+ * RF14: um formulário para todos os empates pendentes. Um novo POST /desempates substitui o anterior,
+ * então as posições de todos os empates vão juntas no mesmo envio.
+ */
+function Desempate({ base, empates, classificacao, onSalvo }: { base: string; empates: number[][]; classificacao: LinhaClassificacao[]; onSalvo: () => void }) {
+  const [ordens, setOrdens] = useState(empates);
   const [justificativa, setJustificativa] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const posicaoInicial = Math.min(...grupos.map((g) => g.posicao));
-  const nome = (id: number) => grupos.find((g) => g.grupoId === id)?.grupo ?? '';
+  const nome = (id: number) => classificacao.find((l) => l.grupoId === id)?.grupo ?? '';
 
-  function mover(de: number, para: number) {
-    const nova = [...ordem];
-    [nova[de], nova[para]] = [nova[para], nova[de]];
-    setOrdem(nova);
+  function mover(empate: number, de: number, para: number) {
+    setOrdens(
+      ordens.map((ordem, i) => {
+        if (i !== empate) return ordem;
+        const nova = [...ordem];
+        [nova[de], nova[para]] = [nova[para], nova[de]];
+        return nova;
+      }),
+    );
   }
 
   async function salvar(e: FormEvent) {
@@ -101,7 +110,7 @@ function Desempate({ base, grupos, onSalvo }: { base: string; grupos: LinhaClass
     try {
       await api(`${base}/desempates`, {
         method: 'POST',
-        body: JSON.stringify({ posicoes: posicoesDesempate(ordem, posicaoInicial), justificativa: justificativa.trim() }),
+        body: JSON.stringify({ posicoes: posicoesDeTodosEmpates(ordens, classificacao), justificativa: justificativa.trim() }),
       });
       onSalvo();
     } catch (err) {
@@ -113,26 +122,41 @@ function Desempate({ base, grupos, onSalvo }: { base: string; grupos: LinhaClass
 
   return (
     <form className="cartao desempate" onSubmit={salvar}>
-      <h2 className="titulo-bloco">Empate no {posicaoInicial}º lugar</h2>
+      <h2 className="titulo-bloco">{ordens.length === 1 ? 'Empate pendente' : `${ordens.length} empates pendentes`}</h2>
       <p className="dica">
-        Os critérios configurados não resolveram. Defina a ordem final; o responsável e a data são registrados pela API (RF14).
+        Os critérios configurados não resolveram. Defina a ordem final de cada empate; todos são registrados juntos, com o responsável e a
+        data gravados pela API (RF14).
       </p>
-      <ol className="criterios">
-        {ordem.map((grupoId, i) => (
-          <li key={grupoId} className="criterio">
-            <span className="criterio-ordem">{posicaoInicial + i}º</span>
-            <span>{nome(grupoId)}</span>
-            <span className="criterio-acoes">
-              <button type="button" className="btn-icone" disabled={i === 0} onClick={() => mover(i, i - 1)} aria-label={`Subir ${nome(grupoId)}`}>
-                ↑
-              </button>
-              <button type="button" className="btn-icone" disabled={i === ordem.length - 1} onClick={() => mover(i, i + 1)} aria-label={`Descer ${nome(grupoId)}`}>
-                ↓
-              </button>
-            </span>
-          </li>
-        ))}
-      </ol>
+      {ordens.map((ordem, e) => {
+        const posicaoInicial = posicaoDoEmpate(ordem, classificacao);
+        return (
+          <fieldset key={empates[e].join('-')} className="empate">
+            <legend>Empate no {posicaoInicial}º lugar</legend>
+            <ol className="criterios">
+              {ordem.map((grupoId, i) => (
+                <li key={grupoId} className="criterio">
+                  <span className="criterio-ordem">{posicaoInicial + i}º</span>
+                  <span>{nome(grupoId)}</span>
+                  <span className="criterio-acoes">
+                    <button type="button" className="btn-icone" disabled={i === 0} onClick={() => mover(e, i, i - 1)} aria-label={`Subir ${nome(grupoId)}`}>
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icone"
+                      disabled={i === ordem.length - 1}
+                      onClick={() => mover(e, i, i + 1)}
+                      aria-label={`Descer ${nome(grupoId)}`}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </fieldset>
+        );
+      })}
       <label className="campo">
         Justificativa
         <textarea className="area-texto" value={justificativa} onChange={(e) => setJustificativa(e.target.value)} rows={3} required />
@@ -144,7 +168,7 @@ function Desempate({ base, grupos, onSalvo }: { base: string; grupos: LinhaClass
       )}
       <div>
         <button className="btn" disabled={salvando}>
-          {salvando ? 'Registrando...' : 'Registrar desempate'}
+          {salvando ? 'Registrando...' : ordens.length === 1 ? 'Registrar desempate' : 'Registrar os desempates'}
         </button>
       </div>
     </form>

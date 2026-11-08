@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { corpoColocacoes, montarBonificacao, montarPenalidade, pontosDaColocacao, posicoesDesempate, validarColocacoes } from './regras.ts';
+import {
+  corpoColocacoes,
+  montarBonificacao,
+  montarPenalidade,
+  pontosDaColocacao,
+  posicoesDeTodosEmpates,
+  posicoesDesempate,
+  validarColocacoes,
+  type LinhaClassificacao,
+} from './regras.ts';
 
 const nome = (id: number) => ['', 'Alfa', 'Beta', 'Gama'][id];
 
@@ -65,5 +74,16 @@ test('desempate dá posições seguidas na ordem escolhida', () => {
   assert.deepEqual(posicoesDesempate([2, 1], 3), [
     { grupoId: 2, posicao: 3 },
     { grupoId: 1, posicao: 4 },
+  ]);
+});
+
+test('dois empates (2º e 5º lugar) vão juntos no mesmo envio', () => {
+  const linha = (grupoId: number, posicao: number) => ({ grupoId, posicao }) as LinhaClassificacao;
+  const classificacao = [linha(1, 1), linha(2, 2), linha(3, 2), linha(4, 4), linha(5, 5), linha(6, 5)];
+  assert.deepEqual(posicoesDeTodosEmpates([[3, 2], [5, 6]], classificacao), [
+    { grupoId: 3, posicao: 2 },
+    { grupoId: 2, posicao: 3 },
+    { grupoId: 5, posicao: 5 },
+    { grupoId: 6, posicao: 6 },
   ]);
 });

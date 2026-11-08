@@ -108,3 +108,16 @@
 .desempate {
   border: 2px solid var(--erro);
 }
+
+.empate {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.empate legend {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
