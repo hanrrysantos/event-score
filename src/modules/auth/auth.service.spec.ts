@@ -18,7 +18,10 @@ describe('AuthService', () => {
   };
 
   function setup(user: AuthUser | null = admin) {
-    const repository = { findByEmail: vi.fn(async (_email: string) => user) };
+    const repository = {
+      findByEmail: vi.fn(async (_email: string) => user),
+      findById: vi.fn(),
+    };
     const passwordHash = new PasswordHashService();
     const verify = vi.spyOn(passwordHash, 'verify').mockResolvedValue(true);
     const service = new AuthService(repository, passwordHash);
