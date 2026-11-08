@@ -125,6 +125,7 @@ Fluxo de trabalho, convenções de código, testes e migrações estão em [CONT
 As decisões de arquitetura ficam registradas em [`docs/adr/`](docs/adr/):
 
 - [ADR 0001: Prisma como ORM e estratégia de migrações](docs/adr/0001-orm-prisma.md)
+- [ADR 0003: Divergências entre o banco (V1 a V11) e o contrato da API](docs/adr/0003-divergencias-banco-contrato.md)
 
 ## Modelo de dados
 
