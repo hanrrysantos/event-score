@@ -115,6 +115,63 @@ paths:
                   descricao: Desenvolvimento em 6 horas
                   diaId: 2
                   pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
+    post:
+      summary: Cadastra desafio com a tabela de pontos (uma linha por grupo, RF06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarDesafio'
+      responses:
+        '201':
+          description: Desafio criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 4, nome: Pitch, descricao: Apresentação final, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+        '422':
+          description: Número de linhas diferente do número de grupos
+          content:
+            application/json:
+              example: { statusCode: 422, message: A tabela de pontos precisa ter uma linha por grupo (6)., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/desafios/{desafioId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: desafioId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Detalhe do desafio
+      responses:
+        '200':
+          description: Desafio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 3, nome: Hackathon, descricao: Desenvolvimento em 6 horas, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+    patch:
+      summary: Altera o desafio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarDesafio'
+      responses:
+        '200':
+          description: Desafio alterado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 3, nome: Hackathon, descricao: Desenvolvimento em 6 horas, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+    delete:
+      summary: Exclui o desafio
+      responses:
+        '204':
+          description: Excluído
 
   /eventos/{eventoId}/participantes/importacao/previa:
     parameters:
@@ -293,6 +350,20 @@ components:
         turma: { type: string }
         grupoId: { type: integer }
         grupo: { type: string }
+    SalvarDesafio:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        descricao: { type: string }
+        diaId: { type: integer }
+        pontosColocacao:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontos]
+            properties:
+              colocacao: { type: integer, minimum: 1 }
+              pontos: { type: integer, minimum: 0 }
     Desafio:
       type: object
       required: [id, nome, descricao, diaId, pontosColocacao]

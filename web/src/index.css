@@ -261,3 +261,81 @@ textarea {
   font-size: 14px;
   white-space: pre-line;
 }
+
+/* Tabelas */
+.tabela-cartao {
+  display: grid;
+  gap: 14px;
+}
+
+.tabela-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tabela-topo h2 {
+  font-size: 17px;
+}
+
+.tabela-rolagem {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tabela th {
+  text-align: left;
+  font-size: 12px;
+  color: var(--texto-suave);
+  padding: 8px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.tabela td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--borda);
+}
+
+/* Peças usadas em várias telas */
+.barra {
+  display: block;
+  height: 8px;
+  border-radius: var(--raio-pilula);
+  background: var(--borda);
+  overflow: hidden;
+}
+
+.barra span {
+  display: block;
+  height: 100%;
+  background: var(--preto);
+}
+
+.icone {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--preto);
+  color: var(--branco);
+}
+
+.btn-excluir {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--erro);
+  color: var(--branco);
+  cursor: pointer;
+}
