@@ -24,16 +24,22 @@ ALTER TABLE criterio_desempate
      DROP CONSTRAINT ck_criterio_desafio_pontos;
 
 -- Converte os criterios que ja existirem e tiverem equivalente no contrato.
--- Qualquer outro tipo interrompe a migracao, para nao perder regra em silencio.
+-- O equivalente considera tipo, sentido e desafio, porque a V10 permitia
+-- desafio em BONIFICACOES e PENALIDADES, e os tipos novos nao aceitam.
+-- Qualquer outro caso interrompe a migracao com mensagem controlada, para nao
+-- perder regra em silencio nem falhar depois ao criar ck_criterio_desafio.
+-- Se falhar (P3018): corrija os dados, rode
+--   npx prisma migrate resolve --rolled-back 20261108000012_v12_criterios_desempate_contrato
+-- e aplique de novo com npm run db:deploy.
 DO $$
 DECLARE
   v_sem_equivalente INT;
 BEGIN
   SELECT COUNT(*) INTO v_sem_equivalente
     FROM criterio_desempate
-   WHERE NOT ((tipo = 'PONTOS_DESAFIO' AND sentido = 'DESC')
-           OR (tipo = 'BONIFICACOES'   AND sentido = 'DESC')
-           OR (tipo = 'PENALIDADES'    AND sentido = 'ASC'));
+   WHERE NOT ((tipo = 'PONTOS_DESAFIO' AND sentido = 'DESC' AND id_desafio IS NOT NULL)
+           OR (tipo = 'BONIFICACOES'   AND sentido = 'DESC' AND id_desafio IS NULL)
+           OR (tipo = 'PENALIDADES'    AND sentido = 'ASC'  AND id_desafio IS NULL));
 
   IF v_sem_equivalente > 0 THEN
     RAISE EXCEPTION
