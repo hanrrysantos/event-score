@@ -68,5 +68,14 @@ jobs:
       - name: Aplicar migrações
         run: npm run db:deploy
 
+      # Roda o seed no banco real: se uma migração nova quebrar alguma regra
+      # que a massa usa, o CI falha aqui. Valores só de teste.
+      - name: Seed de desenvolvimento
+        run: npm run db:seed
+        env:
+          ADMIN_NOME: Administrador CI
+          ADMIN_EMAIL: admin@eventscore.local
+          ADMIN_SENHA: senha-apenas-para-ci
+
       - name: Testes e2e
         run: npm run test:e2e
