@@ -1,9 +1,9 @@
 # US6 — integração de autenticação
 
-As rotas de `DiasEventoController` já estão documentadas com `Bearer JWT` por
-meio de `@ApiBearerAuth()`. A `main` desta branch ainda não contém o módulo de
-autenticação nem um guard funcional; por isso, não foi inventado um guard local
-que duplicaria a US03.
+As rotas de `DiasEventoController` são documentadas com `Bearer JWT` por meio
+de `@ApiBearerAuth()`. A `main` usada nesta entrega ainda não contém um guard
+JWT funcional; por isso, não foi inventado um guard local que duplicaria a
+US03/T09.
 
 Ponto exato de integração antes do merge:
 

@@ -9,7 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { DiasEventoService } from './dias-evento.service.js';
 
 const evento = {
-  idEvento: 1,
+  id: 1,
   dataInicio: new Date('2026-11-20T00:00:00.000Z'),
   dataFim: new Date('2026-11-22T00:00:00.000Z'),
   quantidadeDias: 3,
@@ -36,8 +36,8 @@ describe('DiasEventoService', () => {
     prisma.evento.findUnique.mockResolvedValue(evento);
     prisma.diaEvento.findFirst.mockResolvedValue(null);
     prisma.diaEvento.create.mockResolvedValue({
-      idDia: 5,
-      idEvento: 1,
+      id: 5,
+      eventoId: 1,
       numeroDia: 1,
       data: new Date('2026-11-20T00:00:00.000Z'),
     });
@@ -73,7 +73,7 @@ describe('DiasEventoService', () => {
   it('rejeita número ou data duplicados no evento', async () => {
     const prisma = makePrisma();
     prisma.evento.findUnique.mockResolvedValue(evento);
-    prisma.diaEvento.findFirst.mockResolvedValueOnce({ idDia: 3 });
+    prisma.diaEvento.findFirst.mockResolvedValueOnce({ id: 3 });
     const service = new DiasEventoService(prisma as unknown as PrismaService);
 
     await expect(
@@ -89,7 +89,7 @@ describe('DiasEventoService', () => {
 
     await service.findAll(1);
     expect(prisma.diaEvento.findMany).toHaveBeenCalledWith({
-      where: { idEvento: 1 },
+      where: { eventoId: 1 },
       orderBy: [{ data: 'asc' }, { numeroDia: 'asc' }],
     });
   });
@@ -97,7 +97,7 @@ describe('DiasEventoService', () => {
   it('bloqueia exclusão quando há presença ou desafio associado', async () => {
     const prisma = makePrisma();
     prisma.evento.findUnique.mockResolvedValue(evento);
-    prisma.diaEvento.findFirst.mockResolvedValue({ idDia: 5, idEvento: 1 });
+    prisma.diaEvento.findFirst.mockResolvedValue({ id: 5, eventoId: 1 });
     prisma.$queryRaw.mockResolvedValue([
       { table_name: 'presenca' },
       { table_name: 'desafio' },
@@ -114,7 +114,7 @@ describe('DiasEventoService', () => {
   it('falha fechado quando as tabelas oficiais de dependência não existem', async () => {
     const prisma = makePrisma();
     prisma.evento.findUnique.mockResolvedValue(evento);
-    prisma.diaEvento.findFirst.mockResolvedValue({ idDia: 5, idEvento: 1 });
+    prisma.diaEvento.findFirst.mockResolvedValue({ id: 5, eventoId: 1 });
     prisma.$queryRaw.mockResolvedValue([{ table_name: 'presenca' }]);
     const service = new DiasEventoService(prisma as unknown as PrismaService);
 

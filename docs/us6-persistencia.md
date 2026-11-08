@@ -1,63 +1,52 @@
-# US6: limite de persistência
+# US6: persistência sobre o banco oficial
 
-## Responsabilidades
+A US6 usa o `PrismaService` e o client gerado para acessar `evento` e
+`dia_evento`. O schema Prisma da aplicação é o mapeamento das tabelas oficiais;
+as migrations SQL V1–V11 continuam sendo a fonte de verdade, incluindo CHECKs,
+triggers, funções, views e índices que não são expressos pelo Prisma.
 
-- `PrismaService` e o client gerado são usados pelo runtime da US6 para consultar
-  e alterar somente `evento` e `dia_evento`.
-- `prisma/schema.prisma` é uma projeção parcial dessas tabelas para o client.
-  Ele não representa todas as tabelas da base oficial.
-- A criação e a evolução da base oficial continuam sendo responsabilidade dos
-  scripts SQL V1 a V11 da equipe de banco.
-- A migration `prisma/migrations/20261102000000_t26_evento_dia_evento` serve para
-  instalação limpa local e CI da fundação Prisma. Ela não substitui V1 a V11.
+## Fluxo de banco
 
-## Uso permitido
-
-Em uma base limpa destinada ao backend e aos testes da US6:
+Instalação e evolução do banco devem usar as migrations oficiais, em ordem:
 
 ```bash
-DATABASE_URL=... npm run db:deploy
-DATABASE_URL=... npm run db:generate
+DATABASE_URL='postgresql://.../eventscore_test' npm run db:deploy
+DATABASE_URL='postgresql://.../eventscore_test' npm run db:generate
 ```
 
-Em uma base oficial já criada por V1 a V11, configure apenas `DATABASE_URL` e
-execute a aplicação/testes. O runtime da US6 pode operar sobre as tabelas
-compatíveis já existentes, sem executar a migration Prisma.
+Não há uma migration Prisma paralela da US6 neste branch. A migration mínima
+que existia na implementação inicial não foi aplicada nem incorporada à base
+oficial; ela foi removida do diff para evitar dois fluxos de criação do schema.
 
-## Reprodução dos testes HTTP
+O runtime usa apenas o client Prisma parcial necessário ao módulo de dias, mas
+ele opera sobre a base completa criada por V1–V11. Não executar `prisma db push`,
+`prisma migrate reset`, `prisma migrate dev` ou SQL destrutivo de
+`prisma migrate diff` contra uma base oficial ou compartilhada.
 
-O teste e2e exige que o cenário seja informado explicitamente. Ele falha se o
-modo declarado não corresponder às tabelas encontradas:
+## Reprodução do e2e
+
+O teste exige explicitamente o cenário oficial e falha se essa variável não for
+informada ou se as tabelas esperadas não existirem:
 
 ```bash
-US6_E2E_SCHEMA=prisma-minimal DATABASE_URL=... npm run test:e2e
-US6_E2E_SCHEMA=official DATABASE_URL=... npm run test:e2e
+US6_E2E_SCHEMA=official \
+DATABASE_URL='postgresql://.../eventscore_test' \
+npm run test:e2e -- test/dias-evento.e2e-spec.ts
 ```
 
-O primeiro comando deve apontar para uma base limpa criada por
-`npm run db:deploy`; o segundo deve apontar para uma base descartável já criada
-pelas migrations oficiais V1–V11. As credenciais e URLs ficam somente no
-ambiente local/CI e não são versionadas.
+Use um PostgreSQL descartável criado exclusivamente com V1–V11. Credenciais e
+URLs devem permanecer no ambiente local ou no gerenciador de segredos; não são
+versionadas.
 
-## Comandos proibidos na base oficial
+## Exclusão segura
 
-Não executar contra a base oficial:
+O DELETE verifica `presenca` e `desafio` antes de excluir. Retorna `409` quando
+há dependência e `503` somente quando as estruturas oficiais necessárias para a
+verificação não estão disponíveis. Outros erros de banco não são convertidos
+em `503` e não têm seus detalhes expostos na resposta HTTP.
 
-- `npm run db:migrate`;
-- `npm run db:deploy`;
-- `prisma db push`;
-- `prisma migrate reset`;
-- SQL gerado por `prisma migrate diff --script`.
+## Limitações e dependências
 
-O schema Prisma parcial produziria operações destrutivas para tabelas oficiais
-que ainda não estão modeladas. A compatibilidade deve ser avaliada por SQL
-revisado pela equipe de banco, não por `IF NOT EXISTS`.
-
-## Dependências da exclusão
-
-O endpoint DELETE só retorna `204` depois de verificar `presenca` e `desafio`.
-Se essas estruturas não existirem, retorna `503` sem expor nomes internos ou
-detalhes do banco. Se existirem registros associados, retorna `409`. Outros
-erros de consulta não são convertidos para `503`.
-
-Esta delimitação permanece pendente de validação da DEP01 antes do merge.
+As rotas ainda dependem da integração do guard JWT da US03/T09 para serem
+consideradas privadas. `@ApiBearerAuth()` documenta o contrato Swagger, mas não
+substitui um guard. Essa integração não faz parte da US6.

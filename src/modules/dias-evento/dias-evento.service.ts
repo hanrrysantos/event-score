@@ -13,7 +13,7 @@ import { DiaEventoResponseDto } from './dto/dia-evento-response.dto.js';
 import { formatDateOnly, parseDateOnly } from './date-only.js';
 
 type EventoPeriodo = {
-  idEvento: number;
+  id: number;
   dataInicio: Date;
   dataFim: Date;
   quantidadeDias: number;
@@ -34,7 +34,7 @@ export class DiasEventoService {
 
     try {
       const dia = await this.prisma.diaEvento.create({
-        data: { idEvento: eventoId, numeroDia: dto.numeroDia, data },
+        data: { eventoId, numeroDia: dto.numeroDia, data },
       });
       return this.toResponse(dia);
     } catch (error) {
@@ -46,7 +46,7 @@ export class DiasEventoService {
   async findAll(eventoId: number): Promise<DiaEventoResponseDto[]> {
     await this.getEventoOrThrow(eventoId);
     const dias = await this.prisma.diaEvento.findMany({
-      where: { idEvento: eventoId },
+      where: { eventoId },
       orderBy: [{ data: 'asc' }, { numeroDia: 'asc' }],
     });
     return dias.map((dia) => this.toResponse(dia));
@@ -59,7 +59,7 @@ export class DiasEventoService {
   ): Promise<DiaEventoResponseDto> {
     const evento = await this.getEventoOrThrow(eventoId);
     const atual = await this.prisma.diaEvento.findFirst({
-      where: { idDia: diaId, idEvento: eventoId },
+      where: { id: diaId, eventoId },
     });
     if (!atual) throw new NotFoundException('Dia do evento não encontrado');
     if (dto.numeroDia === undefined && dto.data === undefined) {
@@ -73,7 +73,7 @@ export class DiasEventoService {
 
     try {
       const dia = await this.prisma.diaEvento.update({
-        where: { idDia: diaId },
+        where: { id: diaId },
         data: { numeroDia, data },
       });
       return this.toResponse(dia);
@@ -86,7 +86,7 @@ export class DiasEventoService {
   async remove(eventoId: number, diaId: number): Promise<void> {
     await this.getEventoOrThrow(eventoId);
     const dia = await this.prisma.diaEvento.findFirst({
-      where: { idDia: diaId, idEvento: eventoId },
+      where: { id: diaId, eventoId },
     });
     if (!dia) throw new NotFoundException('Dia do evento não encontrado');
     if (await this.hasDependentRecords(diaId, eventoId)) {
@@ -96,7 +96,7 @@ export class DiasEventoService {
     }
 
     try {
-      await this.prisma.diaEvento.delete({ where: { idDia: diaId } });
+      await this.prisma.diaEvento.delete({ where: { id: diaId } });
     } catch (error) {
       this.throwConflictForForeignKey(error);
       throw error;
@@ -105,9 +105,9 @@ export class DiasEventoService {
 
   private async getEventoOrThrow(eventoId: number): Promise<EventoPeriodo> {
     const evento = await this.prisma.evento.findUnique({
-      where: { idEvento: eventoId },
+      where: { id: eventoId },
       select: {
-        idEvento: true,
+        id: true,
         dataInicio: true,
         dataFim: true,
         quantidadeDias: true,
@@ -142,8 +142,8 @@ export class DiasEventoService {
     exceptId?: number,
   ) {
     const where = {
-      idEvento: eventoId,
-      ...(exceptId === undefined ? {} : { NOT: { idDia: exceptId } }),
+      eventoId,
+      ...(exceptId === undefined ? {} : { NOT: { id: exceptId } }),
     };
     const [sameNumber, sameDate] = await Promise.all([
       this.prisma.diaEvento.findFirst({ where: { ...where, numeroDia } }),
@@ -154,9 +154,9 @@ export class DiasEventoService {
     if (sameDate) throw new ConflictException('data já existe neste evento');
   }
 
-  private toResponse(dia: { idDia: number; numeroDia: number; data: Date }) {
+  private toResponse(dia: { id: number; numeroDia: number; data: Date }) {
     return {
-      id: dia.idDia,
+      id: dia.id,
       numeroDia: dia.numeroDia,
       data: formatDateOnly(dia.data),
     };

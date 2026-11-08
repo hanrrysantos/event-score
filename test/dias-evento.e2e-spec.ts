@@ -9,7 +9,7 @@ import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 
-type EventoFixture = { idEvento: number };
+type EventoFixture = { id: number };
 
 describe('DiasEventoController (e2e)', () => {
   let app: INestApplication<App>;
@@ -78,7 +78,7 @@ describe('DiasEventoController (e2e)', () => {
         quantidadeDias: 3,
         ativo: false,
       },
-      select: { idEvento: true },
+      select: { id: true },
     });
   }
 
@@ -90,11 +90,11 @@ describe('DiasEventoController (e2e)', () => {
 
   it('cria, lista em ordem, atualiza e exclui um dia sem dependências', async () => {
     const fixture = await event();
-    const first = await createDay(fixture.idEvento, 1, 20).expect(201);
-    const second = await createDay(fixture.idEvento, 2, 21).expect(201);
+    const first = await createDay(fixture.id, 1, 20).expect(201);
+    const second = await createDay(fixture.id, 2, 21).expect(201);
 
     await request(app.getHttpServer())
-      .get(`/api/v1/eventos/${fixture.idEvento}/dias`)
+      .get(`/api/v1/eventos/${fixture.id}/dias`)
       .expect(200)
       .expect(({ body }) => {
         expect(body.map((item: { id: number }) => item.id)).toEqual([
@@ -104,13 +104,13 @@ describe('DiasEventoController (e2e)', () => {
       });
 
     await request(app.getHttpServer())
-      .patch(`/api/v1/eventos/${fixture.idEvento}/dias/${second.body.id}`)
+      .patch(`/api/v1/eventos/${fixture.id}/dias/${second.body.id}`)
       .send({ data: '2026-11-22' })
       .expect(200)
       .expect(({ body }) => expect(body.data).toBe('2026-11-22'));
 
     const deletion = request(app.getHttpServer()).delete(
-      `/api/v1/eventos/${fixture.idEvento}/dias/${second.body.id}`,
+      `/api/v1/eventos/${fixture.id}/dias/${second.body.id}`,
     );
     if (dependencyTablesAvailable) {
       await deletion.expect(204);
@@ -122,47 +122,47 @@ describe('DiasEventoController (e2e)', () => {
   it('retorna 404 para evento inexistente e dia de outro evento', async () => {
     const firstEvent = await event();
     const secondEvent = await event();
-    const day = await createDay(firstEvent.idEvento, 1, 20).expect(201);
+    const day = await createDay(firstEvent.id, 1, 20).expect(201);
 
     await request(app.getHttpServer())
       .get('/api/v1/eventos/999999/dias')
       .expect(404);
 
     await request(app.getHttpServer())
-      .patch(`/api/v1/eventos/${secondEvent.idEvento}/dias/${day.body.id}`)
+      .patch(`/api/v1/eventos/${secondEvent.id}/dias/${day.body.id}`)
       .send({ data: '2026-11-21' })
       .expect(404);
   });
 
   it('retorna 409 para número e data duplicados no mesmo evento', async () => {
     const fixture = await event();
-    await createDay(fixture.idEvento, 1, 20).expect(201);
+    await createDay(fixture.id, 1, 20).expect(201);
 
-    await createDay(fixture.idEvento, 1, 21).expect(409);
-    await createDay(fixture.idEvento, 2, 20).expect(409);
+    await createDay(fixture.id, 1, 21).expect(409);
+    await createDay(fixture.id, 2, 20).expect(409);
   });
 
   it('retorna 400 para data inválida e 422 para regras do evento', async () => {
     const fixture = await event();
 
     await request(app.getHttpServer())
-      .post(`/api/v1/eventos/${fixture.idEvento}/dias`)
+      .post(`/api/v1/eventos/${fixture.id}/dias`)
       .send({ numeroDia: 1, data: '20/11/2026' })
       .expect(400);
 
-    await createDay(fixture.idEvento, 1, 24).expect(422);
-    await createDay(fixture.idEvento, 4, 23).expect(422);
+    await createDay(fixture.id, 1, 24).expect(422);
+    await createDay(fixture.id, 4, 23).expect(422);
   });
 
   it('bloqueia exclusão com presença e com desafio, ou falha fechado sem as tabelas', async () => {
     const fixture = await event();
-    const presenceDay = await createDay(fixture.idEvento, 1, 20).expect(201);
-    const challengeDay = await createDay(fixture.idEvento, 2, 21).expect(201);
+    const presenceDay = await createDay(fixture.id, 1, 20).expect(201);
+    const challengeDay = await createDay(fixture.id, 2, 21).expect(201);
 
     if (!dependencyTablesAvailable) {
       await request(app.getHttpServer())
         .delete(
-          `/api/v1/eventos/${fixture.idEvento}/dias/${presenceDay.body.id}`,
+          `/api/v1/eventos/${fixture.id}/dias/${presenceDay.body.id}`,
         )
         .expect(503)
         .expect(({ body }) => {
@@ -177,29 +177,29 @@ describe('DiasEventoController (e2e)', () => {
 
     const group = await prisma.$queryRaw<{ id_grupo: number }[]>`
       INSERT INTO grupo (id_evento, nome, cor)
-      VALUES (${fixture.idEvento}, ${`Grupo ${Date.now()}`}, ${`cor-${Date.now()}`})
+      VALUES (${fixture.id}, ${`Grupo ${Date.now()}`}, ${`cor-${Date.now()}`})
       RETURNING id_grupo
     `;
     const participant = await prisma.$queryRaw<{ id_participante: number }[]>`
       INSERT INTO participante (id_grupo, id_evento, nome, matricula, turma)
-      VALUES (${group[0].id_grupo}, ${fixture.idEvento}, 'Participante e2e', ${`mat-${Date.now()}`}, 'T1')
+      VALUES (${group[0].id_grupo}, ${fixture.id}, 'Participante e2e', ${`mat-${Date.now()}`}, 'T1')
       RETURNING id_participante
     `;
     await prisma.$executeRaw`
       INSERT INTO presenca (id_evento, id_dia, id_participante, presente)
-      VALUES (${fixture.idEvento}, ${presenceDay.body.id}, ${participant[0].id_participante}, true)
+      VALUES (${fixture.id}, ${presenceDay.body.id}, ${participant[0].id_participante}, true)
     `;
     await prisma.$executeRaw`
       INSERT INTO desafio (id_evento, id_dia, nome, descricao)
-      VALUES (${fixture.idEvento}, ${challengeDay.body.id}, 'Desafio e2e', 'Dependência de exclusão')
+      VALUES (${fixture.id}, ${challengeDay.body.id}, 'Desafio e2e', 'Dependência de exclusão')
     `;
 
     await request(app.getHttpServer())
-      .delete(`/api/v1/eventos/${fixture.idEvento}/dias/${presenceDay.body.id}`)
+      .delete(`/api/v1/eventos/${fixture.id}/dias/${presenceDay.body.id}`)
       .expect(409);
     await request(app.getHttpServer())
       .delete(
-        `/api/v1/eventos/${fixture.idEvento}/dias/${challengeDay.body.id}`,
+        `/api/v1/eventos/${fixture.id}/dias/${challengeDay.body.id}`,
       )
       .expect(409);
   });

@@ -103,8 +103,8 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 ├── docs/
 │   └── adr/             # Registros de decisões técnicas
 ├── prisma/
-│   ├── schema.prisma    # Esquema do banco (fonte de verdade)
-│   └── migrations/      # Migrações SQL versionadas
+│   ├── schema.prisma    # Models do Prisma Client (tabelas e relações)
+│   └── migrations/      # Migrações SQL versionadas (V1 a V11 da equipe de banco)
 ├── src/
 │   ├── main.ts          # Ponto de entrada
 │   ├── app.module.ts    # Módulo raiz
@@ -128,7 +128,7 @@ As decisões de arquitetura ficam registradas em [`docs/adr/`](docs/adr/):
 
 ## Modelo de dados
 
-DER preliminar, sujeito a alterações.
+DER aprovado pela equipe de banco (DEP01). A definição exata de tipos e restrições está nas migrações em `prisma/migrations/`; mudanças no modelo entram por migrações novas.
 
 <p align="center">
   <img src="docs/der-eventscore.png" alt="Diagrama entidade-relacionamento do EventScore">
