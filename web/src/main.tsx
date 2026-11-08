@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import Layout from './components/Layout';
 import Eventos from './pages/eventos/Eventos';
+import Grupos from './pages/grupos/Grupos';
 import Login from './pages/Login';
 import './index.css';
 
@@ -19,7 +20,6 @@ function EmBreve({ titulo }: { titulo: string }) {
 }
 
 const telas = [
-  ['grupos', 'Grupos'],
   ['desafios', 'Desafios'],
   ['participantes', 'Participantes'],
   ['apuracao', 'Apuração individual'],
@@ -35,6 +35,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/evento" replace /> },
       { path: 'evento', element: <Eventos /> },
+      { path: 'grupos', element: <Grupos /> },
       ...telas.map(([path, titulo]) => ({ path, element: <EmBreve titulo={titulo} /> })),
       { path: '*', element: <Navigate to="/evento" replace /> },
     ],

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router';
 import { api, type Schemas } from '../../api/client';
-import type { ContextoLayout } from '../../components/Layout';
+import { useLayout } from '../../components/Layout';
 import EventoModal from './EventoModal';
 import './Eventos.css';
 
@@ -12,7 +11,7 @@ const formatarData = (data: string) => data.split('-').reverse().join('/');
 const codigo = (id: number) => `EVT-${String(id).padStart(2, '0')}`;
 
 export default function Eventos() {
-  const { recarregarEventoAtivo } = useOutletContext<ContextoLayout>();
+  const { recarregarEventoAtivo } = useLayout();
   const [eventos, setEventos] = useState<Evento[]>();
   const [erro, setErro] = useState('');
   const [ativando, setAtivando] = useState<number>();
