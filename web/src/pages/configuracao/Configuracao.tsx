@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { api, type Schemas } from '../../api/client';
-import { montarConfiguracao, paraFormulario, TIPOS_CRITERIO, type Configuracao as Config, type Formulario, type TipoCriterio } from './regras.ts';
+import { criteriosValidos, montarConfiguracao, paraFormulario, TIPOS_CRITERIO, type Configuracao as Config, type Formulario, type TipoCriterio } from './regras.ts';
 import './Configuracao.css';
 
 type Desafio = { id: number; nome: string };
@@ -16,6 +16,7 @@ export default function Configuracao() {
   const [erro, setErro] = useState('');
   const [salvo, setSalvo] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [descartados, setDescartados] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -28,6 +29,7 @@ export default function Configuracao() {
         setEvento(ev);
         setDesafios(des);
         setForm(paraFormulario(config, grupos.length, ev.quantidadeDias));
+        setDescartados(config.criteriosDesempate.length - criteriosValidos(config).length);
       })
       .catch((e: Error) => setErro(e.message));
   }, [base]);
@@ -169,6 +171,12 @@ export default function Configuracao() {
           </Bloco>
 
           <Bloco icone="⇅" titulo="Critérios de desempate" dica="Aplicados nesta ordem; se nenhum resolver, o empate vai para decisão manual." largo>
+            {descartados > 0 && (
+              <p className="erro">
+                {descartados === 1 ? 'Um critério salvo usa' : `${descartados} critérios salvos usam`} &quot;Maior presença&quot;, que saiu do contrato. Ele foi
+                retirado da lista e some ao salvar.
+              </p>
+            )}
             {criterios.length === 0 && <p className="dica">Nenhum critério: todo empate irá para decisão manual.</p>}
             <ol className="criterios">
               {criterios.map((c, i) => (

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { montarConfiguracao, paraFormulario, type Configuracao } from './regras.ts';
+import { criteriosValidos, montarConfiguracao, paraFormulario, type Configuracao } from './regras.ts';
 
 const exemplo: Configuracao = {
   conversaoPontoExtra: [
@@ -54,4 +54,16 @@ test('aponta o primeiro erro de preenchimento', () => {
   assert.match(erro({ penalidadeMin: '60' }), /mínima/);
   assert.match(erro({ fatores: ['0', '150', '100'] }), /entre 0% e 100%/);
   assert.match(erro({ criterios: [{ tipo: 'MAIOR_PONTUACAO_DESAFIO', desafioId: null }] }), /desafio/);
+});
+
+test('critério de tipo que saiu do contrato é descartado', () => {
+  const antiga = {
+    ...exemplo,
+    criteriosDesempate: [...exemplo.criteriosDesempate, { ordem: 3, tipo: 'MAIOR_PRESENCA', desafioId: null, descricao: 'x' }],
+  } as unknown as Configuracao;
+  assert.equal(criteriosValidos(antiga).length, 2);
+  assert.deepEqual(
+    paraFormulario(antiga, 2, 2).criterios.map((c) => c.tipo),
+    ['MAIOR_PONTUACAO_DESAFIO', 'MENOR_PENALIDADE'],
+  );
 });

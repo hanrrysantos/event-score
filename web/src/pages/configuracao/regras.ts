@@ -1,12 +1,12 @@
 import { fatorParaPercentual, lerNumero, mostrarNumero, percentualParaFator } from '../../numero.ts';
 
 // Formato do contrato v0.3 (GET/PUT /eventos/{eventoId}/configuracao); ainda fora do OpenAPI oficial.
+// MAIOR_PRESENCA saiu em 2026-11-08: presença não altera a colocação do grupo, e o regimento (Art. 16) não usa presença.
 export const TIPOS_CRITERIO = {
   MAIOR_PONTUACAO_DESAFIO: 'Maior pontuação em um desafio',
-  MAIOR_SOMA_DESAFIOS: 'Maior soma nos desafios',
+  MAIOR_SOMA_DESAFIOS: 'Maior soma nos desafios (sem bônus nem penalidade)',
   MAIOR_BONIFICACAO: 'Maior bonificação',
   MENOR_PENALIDADE: 'Menor penalidade',
-  MAIOR_PRESENCA: 'Maior presença',
 } as const;
 export type TipoCriterio = keyof typeof TIPOS_CRITERIO;
 
@@ -29,6 +29,9 @@ export type Formulario = {
   criterios: { tipo: TipoCriterio; desafioId: number | null }[];
 };
 
+/** Critérios com tipo que a tela ainda aceita; um tipo que saiu do contrato é descartado ao salvar. */
+export const criteriosValidos = (config: Configuracao) => config.criteriosDesempate.filter((c) => c.tipo in TIPOS_CRITERIO);
+
 /** Monta o formulário com uma linha por grupo e uma por quantidade de dias presentes (0 a quantidadeDias). */
 export function paraFormulario(config: Configuracao, grupos: number, quantidadeDias: number): Formulario {
   const colocacoes = grupos || config.conversaoPontoExtra.length;
@@ -46,7 +49,7 @@ export function paraFormulario(config: Configuracao, grupos: number, quantidadeD
       const v = fator(d);
       return v === undefined ? '' : fatorParaPercentual(v);
     }),
-    criterios: [...config.criteriosDesempate]
+    criterios: criteriosValidos(config)
       .sort((a, b) => a.ordem - b.ordem)
       .map((c) => ({ tipo: c.tipo, desafioId: c.desafioId })),
   };

@@ -682,7 +682,7 @@ components:
               ordem: { type: integer, minimum: 1 }
               tipo:
                 type: string
-                enum: [MAIOR_PONTUACAO_DESAFIO, MAIOR_SOMA_DESAFIOS, MAIOR_BONIFICACAO, MENOR_PENALIDADE, MAIOR_PRESENCA]
+                enum: [MAIOR_PONTUACAO_DESAFIO, MAIOR_SOMA_DESAFIOS, MAIOR_BONIFICACAO, MENOR_PENALIDADE]
               desafioId: { type: integer, nullable: true }
               descricao: { type: string }
     Arquivo:
