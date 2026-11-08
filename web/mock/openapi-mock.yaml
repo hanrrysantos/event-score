@@ -173,6 +173,218 @@ paths:
         '204':
           description: Excluído
 
+  # Lançamentos (RF08 a RF14, RF18)
+  /eventos/{eventoId}/desafios/{desafioId}/resultados:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: desafioId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Colocação de cada grupo no desafio
+      responses:
+        '200':
+          description: Uma linha por grupo; id null se ainda não lançado
+          content:
+            application/json:
+              example:
+                - { id: 11, grupoId: 1, colocacao: 1, ausente: false, pontos: 100 }
+                - { id: null, grupoId: 2, colocacao: null, ausente: false, pontos: 0 }
+    put:
+      summary: Salva todas as colocações do desafio (idempotente; mantém o id de cada linha)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [grupoId, colocacao, ausente]
+                properties:
+                  grupoId: { type: integer }
+                  colocacao: { type: integer, nullable: true, minimum: 1 }
+                  ausente: { type: boolean }
+      responses:
+        '200':
+          description: Colocações salvas
+          content:
+            application/json:
+              example:
+                - { id: 11, grupoId: 1, colocacao: 1, ausente: false, pontos: 100 }
+                - { id: 12, grupoId: 2, colocacao: 2, ausente: false, pontos: 80 }
+        '422':
+          description: Colocação repetida
+          content:
+            application/json:
+              example: { statusCode: 422, message: Dois grupos não podem ter a mesma colocação., error: Unprocessable Entity }
+
+  /auditoria:
+    get:
+      summary: Histórico de alterações de um registro (RF18)
+      parameters:
+        - { name: entidade, in: query, required: true, schema: { type: string } }
+        - { name: registroId, in: query, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Histórico
+          content:
+            application/json:
+              example:
+                - { dataHora: '2026-11-23T14:38:00Z', usuario: Administrador Arena, operacao: INSERT, valorAnterior: null, valorNovo: 'colocacao=2' }
+                - { dataHora: '2026-11-23T15:02:00Z', usuario: Administrador Arena, operacao: UPDATE, valorAnterior: 'colocacao=2', valorNovo: 'colocacao=1' }
+
+  /eventos/{eventoId}/bonificacoes:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Bonificação de cada grupo por item (RF10)
+      responses:
+        '200':
+          description: Por grupo
+          content:
+            application/json:
+              example:
+                - { grupoId: 1, itens: [{ itemBonificacaoId: 1, valor: 10 }, { itemBonificacaoId: 2, valor: 8 }], total: 18 }
+                - { grupoId: 2, itens: [{ itemBonificacaoId: 1, valor: 7 }], total: 7 }
+
+  /eventos/{eventoId}/bonificacoes/{grupoId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: grupoId, in: path, required: true, schema: { type: integer } }
+    put:
+      summary: Registra a bonificação do grupo (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [itemBonificacaoId, valor]
+                properties:
+                  itemBonificacaoId: { type: integer }
+                  valor: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Bonificação registrada
+          content:
+            application/json:
+              example: { grupoId: 1, itens: [{ itemBonificacaoId: 1, valor: 10 }], total: 10 }
+        '422':
+          description: Valor acima do teto
+          content:
+            application/json:
+              example: { statusCode: 422, message: O valor de Uniformização passa do teto de 10., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/penalidades:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Penalidades lançadas (RF11)
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Penalidade'
+              example:
+                - { id: 1, grupoId: 2, pontos: 20, descricao: Atraso na entrega, justificativa: Entregou o projeto 15 minutos depois do prazo }
+    post:
+      summary: Aplica penalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarPenalidade'
+      responses:
+        '201':
+          description: Penalidade aplicada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalidade'
+              example: { id: 2, grupoId: 1, pontos: 10, descricao: Conduta, justificativa: Discussão com a comissão }
+        '422':
+          description: Fora da faixa ou sem justificativa
+          content:
+            application/json:
+              example: { statusCode: 422, message: A penalidade deve estar entre 10 e 50 pontos., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/penalidades/{penalidadeId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: penalidadeId, in: path, required: true, schema: { type: integer } }
+    patch:
+      summary: Corrige penalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarPenalidade'
+      responses:
+        '200':
+          description: Penalidade corrigida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalidade'
+              example: { id: 1, grupoId: 2, pontos: 15, descricao: Atraso na entrega, justificativa: Entregou o projeto 15 minutos depois do prazo }
+    delete:
+      summary: Remove penalidade
+      responses:
+        '204':
+          description: Removida
+
+  /eventos/{eventoId}/classificacao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Classificação dos grupos (RF12, RF13)
+      responses:
+        '200':
+          description: Classificação, com os empates que os critérios não resolveram
+          content:
+            application/json:
+              example:
+                dados:
+                  - { posicao: 1, grupoId: 1, grupo: Alfa, cor: '#FF5733', pontosDesafios: 180, bonificacao: 18, penalidade: 0, total: 198, empatado: true }
+                  - { posicao: 1, grupoId: 2, grupo: Beta, cor: '#3380FF', pontosDesafios: 211, bonificacao: 7, penalidade: 20, total: 198, empatado: true }
+                resumo: { desafiosLancados: 2, desafiosTotais: 4, empatesPendentes: [[1, 2]] }
+
+  /eventos/{eventoId}/desempates:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Decisão manual de desempate (RF14); um novo envio substitui o anterior
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [posicoes, justificativa]
+              properties:
+                posicoes:
+                  type: array
+                  items:
+                    type: object
+                    required: [grupoId, posicao]
+                    properties:
+                      grupoId: { type: integer }
+                      posicao: { type: integer, minimum: 1 }
+                justificativa: { type: string, minLength: 1 }
+      responses:
+        '201':
+          description: Desempate registrado, com responsável e data gravados pela API
+          content:
+            application/json:
+              example: { posicoes: [{ grupoId: 2, posicao: 1 }, { grupoId: 1, posicao: 2 }], justificativa: Sorteio na frente das equipes, responsavel: Administrador Arena, dataHora: '2026-11-24T20:10:00Z' }
+
   /eventos/{eventoId}/dias/{diaId}/presencas:
     parameters:
       - $ref: '#/components/parameters/EventoId'
@@ -410,6 +622,22 @@ components:
         turma: { type: string }
         grupoId: { type: integer }
         grupo: { type: string }
+    Penalidade:
+      type: object
+      required: [id, grupoId, pontos, descricao, justificativa]
+      properties:
+        id: { type: integer }
+        grupoId: { type: integer }
+        pontos: { type: integer }
+        descricao: { type: string }
+        justificativa: { type: string }
+    SalvarPenalidade:
+      type: object
+      properties:
+        grupoId: { type: integer }
+        pontos: { type: integer, minimum: 0 }
+        descricao: { type: string }
+        justificativa: { type: string, minLength: 1 }
     Presenca:
       type: object
       required: [participanteId, matricula, nome, turma, grupoId, grupo, presente]
