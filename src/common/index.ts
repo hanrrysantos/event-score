@@ -4,3 +4,4 @@ export { ErroValidacaoDto } from './dto/erro-validacao.dto.js';
 export { PaginacaoMetaDto } from './dto/paginacao-meta.dto.js';
 export { PaginacaoQueryDto } from './dto/paginacao-query.dto.js';
 export { TipoCriterioDesempate } from './enums/tipo-criterio-desempate.enum.js';
+export { HttpExceptionFilter } from './filters/http-exception.filter.js';
