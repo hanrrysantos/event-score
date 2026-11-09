@@ -119,6 +119,22 @@ describe('DiasEventoController (e2e)', () => {
     }
   });
 
+  it('lista em ordem cronológica mesmo quando a criação ocorre fora de ordem', async () => {
+    const fixture = await event();
+    const later = await createDay(fixture.id, 2, 22).expect(201);
+    const earlier = await createDay(fixture.id, 1, 20).expect(201);
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/eventos/${fixture.id}/dias`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.map((item: { id: number }) => item.id)).toEqual([
+          earlier.body.id,
+          later.body.id,
+        ]);
+      });
+  });
+
   it('retorna 404 para evento inexistente e dia de outro evento', async () => {
     const firstEvent = await event();
     const secondEvent = await event();
@@ -140,10 +156,21 @@ describe('DiasEventoController (e2e)', () => {
 
     await createDay(fixture.id, 1, 21).expect(409);
     await createDay(fixture.id, 2, 20).expect(409);
+
+    const another = await createDay(fixture.id, 3, 22).expect(201);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/eventos/${fixture.id}/dias/${another.body.id}`)
+      .send({ numeroDia: 1 })
+      .expect(409);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/eventos/${fixture.id}/dias/${another.body.id}`)
+      .send({ data: '2026-11-20' })
+      .expect(409);
   });
 
   it('retorna 400 para data inválida e 422 para regras do evento', async () => {
     const fixture = await event();
+    const day = await createDay(fixture.id, 1, 20).expect(201);
 
     await request(app.getHttpServer())
       .post(`/api/v1/eventos/${fixture.id}/dias`)
@@ -152,6 +179,24 @@ describe('DiasEventoController (e2e)', () => {
 
     await createDay(fixture.id, 1, 24).expect(422);
     await createDay(fixture.id, 4, 23).expect(422);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/eventos/${fixture.id}/dias/${day.body.id}`)
+      .send({ data: '20/11/2026' })
+      .expect(400);
+  });
+
+  it('retorna 404 ao excluir evento inexistente ou dia de outro evento', async () => {
+    const firstEvent = await event();
+    const secondEvent = await event();
+    const day = await createDay(firstEvent.id, 1, 20).expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/eventos/999999/dias/${day.body.id}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/api/v1/eventos/${secondEvent.id}/dias/${day.body.id}`)
+      .expect(404);
   });
 
   it('bloqueia exclusão com presença e com desafio, ou falha fechado sem as tabelas', async () => {

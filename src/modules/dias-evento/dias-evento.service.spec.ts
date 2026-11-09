@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   NotFoundException,
   ServiceUnavailableException,
@@ -70,6 +71,29 @@ describe('DiasEventoService', () => {
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
+  it('rejeita numeroDia inválido e data inválida com 400', async () => {
+    const prisma = makePrisma();
+    prisma.evento.findUnique.mockResolvedValue(evento);
+    const service = new DiasEventoService(prisma as unknown as PrismaService);
+
+    await expect(
+      service.create(1, { numeroDia: 0, data: '2026-11-20' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.create(1, { numeroDia: 1, data: '2026-02-30' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita numeroDia acima da quantidade configurada com 422', async () => {
+    const prisma = makePrisma();
+    prisma.evento.findUnique.mockResolvedValue(evento);
+    const service = new DiasEventoService(prisma as unknown as PrismaService);
+
+    await expect(
+      service.create(1, { numeroDia: 4, data: '2026-11-22' }),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
   it('rejeita número ou data duplicados no evento', async () => {
     const prisma = makePrisma();
     prisma.evento.findUnique.mockResolvedValue(evento);
@@ -122,5 +146,18 @@ describe('DiasEventoService', () => {
       ServiceUnavailableException,
     );
     expect(prisma.diaEvento.delete).not.toHaveBeenCalled();
+  });
+
+  it('não transforma falha SQL não relacionada à estrutura em 503', async () => {
+    const prisma = makePrisma();
+    prisma.evento.findUnique.mockResolvedValue(evento);
+    prisma.diaEvento.findFirst.mockResolvedValue({ id: 5, eventoId: 1 });
+    const erro = Object.assign(new Error('database connection reset'), {
+      code: 'XX000',
+    });
+    prisma.$queryRaw.mockRejectedValue(erro);
+    const service = new DiasEventoService(prisma as unknown as PrismaService);
+
+    await expect(service.remove(1, 5)).rejects.toBe(erro);
   });
 });
