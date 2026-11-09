@@ -2,7 +2,7 @@
 
 **História:** US02 - Contrato API e padrões compartilhados  
 **Data do Alinhamento Inicial:** 25/10/2026  
-**Data do Fechamento Final:** 29/10/2026 (Versão 0.3 aprovada por Luiz Meneses - Frontend)  
+**Data do Fechamento Final:** 29/10/2026 (Baseline `v0.1.0` / Sprint 01 e versão 0.3 aprovadas formalmente por Luiz Meneses - Frontend Lead)  
 **Status:** Concluído e Aprovado  
 
 ---
@@ -44,5 +44,12 @@ Ficou acordado que a Sprint 01 entrega os 4 módulos essenciais com CRUD complet
    - `400`: Erro de sintaxe ou campo inválido disparado pelo `ValidationPipe`.
    - `401`: Token ausente, inválido ou login incorreto.
    - `404`: Recurso não encontrado ou pertencente a outro evento.
-   - `409`: Conflito de estado (ex.: tentar editar ou excluir grupo que já tem resultado lançado, ou excluir dia com presença).
+   - `409`: Conflito de estado — inclui o bloqueio por trigger de grupos após resultado lançado (RF03) com a mensagem canônica `"os grupos não podem mais ser alterados porque já há resultado lançado"`, tentativa de excluir grupo com participantes vinculados ou dia com presenças/desafios, e violação de unicidade.
    - `422`: Violação de regra de negócio (ex.: data fora do período do evento, colocação repetida).
+   - `503`: Serviço indisponível (`Service Unavailable`) — ocorre na exclusão de dia (`DELETE /eventos/{eventoId}/dias/{diaId}`) quando a verificação de dependências (presenças/desafios) está indisponível; não representa conflito de vínculo existente (que continua retornando `409 Conflict`).
+
+---
+
+## 3. Registro Formal de Aprovação (Baseline Sprint 01 / `v0.1.0`)
+- **Versão Publicada do Contrato OpenAPI:** `v0.1.0` ([`docs/openapi/openapi-v0.1.yaml`](./openapi/openapi-v0.1.yaml))
+- **Aprovação do Frontend:** **Luiz Meneses** (Frontend Lead) — baseline da Sprint 01 (`v0.1.0` / contrato v0.3) aprovado e publicado como referência oficial para integração entre Backend e Frontend.

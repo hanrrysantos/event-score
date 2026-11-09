@@ -498,6 +498,16 @@ paths:
                 statusCode: 409
                 message: "Não é possível excluir o dia pois já existem registros de presença ou desafios vinculados"
                 error: "Conflict"
+        '503':
+          description: "Serviço indisponível: ocorre quando a verificação de dependências (presenças/desafios) está indisponível. Este status não representa um conflito de dependência existente (que continua retornando 409 Conflict)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPadraoDto'
+              example:
+                statusCode: 503
+                message: "Verificação de vínculos do dia temporariamente indisponível"
+                error: "Service Unavailable"
 
   /eventos/{eventoId}/grupos:
     parameters:
@@ -638,14 +648,14 @@ paths:
         '404':
           $ref: '#/components/responses/NaoEncontrado'
         '409':
-          description: "Conflito: evento já possui resultados lançados (bloqueio por RF03) ou nome duplicado."
+          description: "Conflito: os grupos não podem mais ser alterados porque já há resultado lançado (bloqueio por RF03) ou nome/cor duplicados."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErroPadraoDto'
               example:
                 statusCode: 409
-                message: "Não é permitido alterar grupos de um evento que já possui resultados lançados (RF03)"
+                message: "os grupos não podem mais ser alterados porque já há resultado lançado"
                 error: "Conflict"
     delete:
       tags:
@@ -663,14 +673,14 @@ paths:
         '404':
           $ref: '#/components/responses/NaoEncontrado'
         '409':
-          description: "Conflito: evento já possui resultados lançados (RF03) ou grupo possui participantes vinculados."
+          description: "Conflito: os grupos não podem mais ser alterados porque já há resultado lançado (RF03) ou grupo possui participantes vinculados."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErroPadraoDto'
               example:
                 statusCode: 409
-                message: "Não é permitido excluir grupos de um evento que já possui resultados lançados (RF03)"
+                message: "os grupos não podem mais ser alterados porque já há resultado lançado"
                 error: "Conflict"
 
 components:
