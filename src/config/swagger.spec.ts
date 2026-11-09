@@ -88,4 +88,27 @@ describe('Swagger de eventos', () => {
       });
     },
   );
+
+  it('publica os DTOs de erro padronizados (ErroPadraoDto e ErroValidacaoDto)', () => {
+    expect(document.components?.schemas).toMatchObject({
+      ErroPadraoDto: {
+        type: 'object',
+        required: ['statusCode', 'message', 'error'],
+        properties: {
+          statusCode: { type: 'integer' },
+          message: { type: 'string' },
+          error: { type: 'string' },
+        },
+      },
+      ErroValidacaoDto: {
+        type: 'object',
+        required: ['statusCode', 'message', 'error'],
+        properties: {
+          statusCode: { type: 'integer' },
+          message: { type: 'array', items: { type: 'string' } },
+          error: { type: 'string' },
+        },
+      },
+    });
+  });
 });
