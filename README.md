@@ -42,7 +42,22 @@ docker compose up -d
 
 # 6. Iniciar a API (aplica migrações pendentes e recarrega ao salvar)
 npm run start:dev
+
+# 7. Em outro terminal, popular o banco com a massa de desenvolvimento
+npm run db:seed
 ```
+
+O seed cria o evento Arena Comp 2026 (19 e 20/11), seus dois dias, os seis grupos, o fator de presença e o administrador definido em `ADMIN_*` no `.env`. Ele pode rodar várias vezes: insere só o que falta e não altera o que já existe, inclusive o administrador (para trocar a senha, use `npm run db:admin`). Para recomeçar do zero, use `npx prisma migrate reset` e rode o seed de novo.
+
+### Administrador no servidor
+
+Em homologação e produção não se usa o seed, que traz dados fictícios e se recusa a rodar com `NODE_ENV=production`. Depois do deploy, defina `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` no ambiente e rode:
+
+```bash
+npm run db:admin
+```
+
+O `db:admin` recusa a senha de exemplo do `.env.example` (`troque-esta-senha`), que é pública; ela só é aceita pelo seed de desenvolvimento. O script usa a versão compilada em `dist/`, então não precisa das dependências de desenvolvimento. Se o e-mail já existir, ele atualiza o nome e a senha, o que serve também para trocar a senha.
 
 Para conferir se está tudo funcionando:
 
@@ -79,6 +94,8 @@ Basta rodar `npm run start:dev` de novo: migrações novas são aplicadas e o Pr
 | `npm run db:deploy` | Aplica migrações pendentes |
 | `npm run db:generate` | Gera o Prisma Client |
 | `npm run db:studio` | Abre uma interface web para ver e editar os dados |
+| `npm run db:seed` | Compila e popula o banco com a massa de desenvolvimento e o administrador |
+| `npm run db:admin` | Cria ou atualiza só o administrador (exige `npm run build` antes) |
 
 ## Variáveis de ambiente
 
@@ -93,6 +110,9 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `POSTGRES_PASSWORD` | Compose | Senha do banco |
 | `POSTGRES_DB` | Compose | Nome do banco |
 | `POSTGRES_PORT` | Compose | Porta exposta na sua máquina (padrão: `5432`) |
+| `ADMIN_NOME` | Seed e `db:admin` | Nome do administrador |
+| `ADMIN_EMAIL` | Seed e `db:admin` | E-mail de login do administrador (gravado em minúsculas) |
+| `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres. O `db:admin` recusa o valor de exemplo do `.env.example` |
 
 `DATABASE_URL` deve usar o mesmo usuário, senha, porta e banco das variáveis `POSTGRES_*`.
 
@@ -112,6 +132,7 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 │   ├── prisma/          # PrismaService (acesso ao banco)
 │   ├── health/          # GET /health
 │   ├── modules/         # Módulos de domínio (eventos, grupos...)
+│   ├── scripts/         # Seed de desenvolvimento e criação do administrador
 │   └── generated/       # Prisma Client gerado (não versionado)
 └── test/                # Testes e2e
 ```
