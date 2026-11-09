@@ -37,4 +37,10 @@ describe('validateEnv', () => {
       /NODE_ENV/,
     );
   });
+
+  it('should reject a short JWT secret when one is configured', () => {
+    expect(() => validateEnv({ ...validEnv, JWT_SECRET: 'curto' })).toThrow(
+      /JWT_SECRET/,
+    );
+  });
 });
