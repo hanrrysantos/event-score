@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index.js';
@@ -135,6 +136,23 @@ describe('HttpExceptionFilter', () => {
         statusCode: 422,
         message: 'A data informada está fora do período do evento',
         error: 'Unprocessable Entity',
+      });
+    });
+
+    it('preserva ServiceUnavailableException (503) sem convertê-la para 500 (ex.: verificação de dependências de dia na US06)', () => {
+      const exception = new ServiceUnavailableException(
+        'Verificação de vínculos do dia temporariamente indisponível',
+      );
+
+      filter.catch(exception, mockArgumentsHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        statusCode: 503,
+        message: 'Verificação de vínculos do dia temporariamente indisponível',
+        error: 'Service Unavailable',
       });
     });
   });
