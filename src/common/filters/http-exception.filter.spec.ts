@@ -9,10 +9,11 @@ import {
 } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index.js';
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma } from '../../generated/prisma/client.js';
 import {
   HttpExceptionFilter,
+  MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO,
   MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO,
 } from './http-exception.filter.js';
 
@@ -22,10 +23,11 @@ describe('HttpExceptionFilter', () => {
   let mockRequest: Partial<Request>;
   let mockHttpArgumentsHost: HttpArgumentsHost;
   let mockArgumentsHost: ArgumentsHost;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    process.env.NODE_ENV = 'test';
 
     filter = new HttpExceptionFilter();
 
@@ -53,6 +55,10 @@ describe('HttpExceptionFilter', () => {
       switchToWs: vi.fn(),
       getType: vi.fn().mockReturnValue('http'),
     };
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   describe('Exceções HTTP padrão do NestJS', () => {
@@ -172,7 +178,7 @@ describe('HttpExceptionFilter', () => {
       });
     });
 
-    it('mapeia erro Prisma P2003 / restrict_violation (RF03) para 409 Conflict com a mensagem padronizada', () => {
+    it('mapeia erro Prisma P2003 com restrict_violation (RF03) para 409 Conflict com mensagem específica', () => {
       const prismaError = new Prisma.PrismaClientKnownRequestError(
         'Foreign key constraint violated on the (not available)',
         {
@@ -201,6 +207,28 @@ describe('HttpExceptionFilter', () => {
       });
     });
 
+    it('distingue erro Prisma P2003 genérico (outra tabela/relação) retornando mensagem de conflito sem atribuir a grupos', () => {
+      const genericP2003 = new Prisma.PrismaClientKnownRequestError(
+        'Foreign key constraint violated on the field: `id_evento`',
+        {
+          code: 'P2003',
+          clientVersion: '7.10.1',
+          meta: {
+            field_name: 'id_evento',
+          },
+        },
+      );
+
+      filter.catch(genericP2003, mockArgumentsHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        statusCode: 409,
+        message: MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO,
+        error: 'Conflict',
+      });
+    });
+
     it('mapeia erro de trigger mencionando bloqueio de grupos após resultados para 409 Conflict', () => {
       const triggerError = new Error(
         'Grupos nao podem ser alterados apos o lancamento de resultados no evento 1 (23001: restrict_violation)',
@@ -217,9 +245,9 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
-  describe('Erros internos não tratados', () => {
-    it('mapeia erro genérico desconhecido para 500 Internal Server Error', () => {
-      const genericError = new Error('Falha inesperada na camada de serviço');
+  describe('Observabilidade e erros internos', () => {
+    it('mapeia erro genérico desconhecido para 500 Internal Server Error higienizado', () => {
+      const genericError = new Error('Falha inesperada de conexão');
 
       filter.catch(genericError, mockArgumentsHost);
 
@@ -232,6 +260,45 @@ describe('HttpExceptionFilter', () => {
         error: 'Internal Server Error',
       });
     });
+
+    it('registra log com mensagem e stack trace em ambiente fora de teste (produção/desenvolvimento)', () => {
+      process.env.NODE_ENV = 'production';
+      const loggerSpy = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const genericError = new Error('Erro crítico do banco de dados');
+
+      filter.catch(genericError, mockArgumentsHost);
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Erro crítico do banco de dados',
+        genericError.stack,
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        statusCode: 500,
+        message: 'Erro interno do servidor',
+        error: 'Internal Server Error',
+      });
+    });
+
+    it('silencia Logger.error durante testes automatizados (NODE_ENV === "test")', () => {
+      process.env.NODE_ENV = 'test';
+      const loggerSpy = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const genericError = new Error('Erro durante teste');
+
+      filter.catch(genericError, mockArgumentsHost);
+
+      expect(loggerSpy).not.toHaveBeenCalled();
+      expect(mockResponse.status).toHaveBeenCalledWith(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    });
   });
 });
-

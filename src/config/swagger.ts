@@ -1,5 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ErroPadraoDto } from '../common/dto/erro-padrao.dto.js';
+import { ErroValidacaoDto } from '../common/dto/erro-validacao.dto.js';
 import { AtualizarEventoDto } from '../modules/eventos/dto/atualizar-evento.dto.js';
 import { CriarEventoDto } from '../modules/eventos/dto/criar-evento.dto.js';
 import { EventoDetalheDto } from '../modules/eventos/dto/evento-detalhe.dto.js';
@@ -19,6 +21,8 @@ export function configurarSwagger(app: INestApplication): void {
       AtualizarEventoDto,
       EventoResumoDto,
       EventoDetalheDto,
+      ErroPadraoDto,
+      ErroValidacaoDto,
     ],
   });
   SwaggerModule.setup('api/docs', app, document, {

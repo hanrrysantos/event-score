@@ -12,6 +12,9 @@ import { Prisma } from '../../generated/prisma/client.js';
 export const MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO =
   'os grupos não podem mais ser alterados porque já há resultado lançado';
 
+export const MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO =
+  'Operação não permitida por restrição de relacionamento ou dependência inexistente';
+
 const NOMES_STATUS_HTTP: Record<number, string> = {
   [HttpStatus.BAD_REQUEST]: 'Bad Request',
   [HttpStatus.UNAUTHORIZED]: 'Unauthorized',
@@ -69,7 +72,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return this.tratarErroPrisma(exception);
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'test') {
       const mensagemLog =
         exception instanceof Error
           ? exception.message
@@ -143,14 +146,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
         };
 
       case 'P2003':
+        if (this.ehErroBloqueioGrupoPorResultado(exception)) {
+          return {
+            statusCode: HttpStatus.CONFLICT,
+            message: MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO,
+            error: NOMES_STATUS_HTTP[HttpStatus.CONFLICT],
+          };
+        }
         return {
           statusCode: HttpStatus.CONFLICT,
-          message: MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO,
+          message: MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO,
           error: NOMES_STATUS_HTTP[HttpStatus.CONFLICT],
         };
 
       default:
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'test') {
           this.logger.error(
             `Erro Prisma não mapeado (${exception.code}): ${exception.message}`,
           );
@@ -182,10 +192,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   private ehErroBloqueioGrupoPorResultado(exception: unknown): boolean {
-    if (this.ehErroPrismaConhecido(exception) && exception.code === 'P2003') {
-      return true;
-    }
-
     const textoInspecionado =
       this.extrairTextoInspecao(exception).toLowerCase();
     if (!textoInspecionado) {
@@ -205,15 +211,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return true;
     }
 
-    const mencionaRestrict =
+    const ehRestrictViolation =
       textoInspecionado.includes('23001') ||
       textoInspecionado.includes('restrict_violation') ||
       textoInspecionado.includes('restrictviolation');
-    const mencionaGrupoEResultado =
-      textoInspecionado.includes('grupo') &&
-      textoInspecionado.includes('resultado');
+    const mencionaGrupo = textoInspecionado.includes('grupo');
 
-    return mencionaRestrict || mencionaGrupoEResultado;
+    return ehRestrictViolation && mencionaGrupo;
   }
 
   private extrairTextoInspecao(exception: unknown): string {
