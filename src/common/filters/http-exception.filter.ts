@@ -15,6 +15,9 @@ export const MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO =
 export const MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO =
   'Operação não permitida por restrição de relacionamento ou dependência inexistente';
 
+export const MENSAGEM_ERRO_VALIDACAO_PRISMA =
+  'Dados inválidos para a operação solicitada';
+
 const NOMES_STATUS_HTTP: Record<number, string> = {
   [HttpStatus.BAD_REQUEST]: 'Bad Request',
   [HttpStatus.UNAUTHORIZED]: 'Unauthorized',
@@ -58,6 +61,24 @@ export class HttpExceptionFilter implements ExceptionFilter {
   private construirCorpoErro(exception: unknown): CorpoErroPadrao {
     if (exception instanceof HttpException) {
       return this.tratarHttpException(exception);
+    }
+
+    if (this.ehErroValidacaoPrisma(exception)) {
+      if (process.env.NODE_ENV !== 'test') {
+        const mensagemLog =
+          exception instanceof Error
+            ? exception.message
+            : 'Erro de validação do Prisma Client';
+        const stackLog =
+          exception instanceof Error ? exception.stack : undefined;
+        this.logger.warn(mensagemLog, stackLog);
+      }
+
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: MENSAGEM_ERRO_VALIDACAO_PRISMA,
+        error: NOMES_STATUS_HTTP[HttpStatus.BAD_REQUEST],
+      };
     }
 
     if (this.ehErroBloqueioGrupoPorResultado(exception)) {
@@ -171,6 +192,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
           error: NOMES_STATUS_HTTP[HttpStatus.INTERNAL_SERVER_ERROR],
         };
     }
+  }
+
+  private ehErroValidacaoPrisma(exception: unknown): boolean {
+    if (exception instanceof Prisma.PrismaClientValidationError) {
+      return true;
+    }
+
+    return (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'name' in exception &&
+      (exception as { name: unknown }).name === 'PrismaClientValidationError'
+    );
   }
 
   private ehErroPrismaConhecido(

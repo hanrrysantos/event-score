@@ -14,6 +14,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import {
   HttpExceptionFilter,
   MENSAGEM_CONFLITO_RELACIONAMENTO_GENERICO,
+  MENSAGEM_ERRO_VALIDACAO_PRISMA,
   MENSAGEM_GRUPO_BLOQUEADO_POR_RESULTADO,
 } from './http-exception.filter.js';
 
@@ -299,6 +300,82 @@ describe('HttpExceptionFilter', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    });
+  });
+
+  describe('Segurança: Prevenção de vazamento de informações (Information Disclosure)', () => {
+    it('mapeia PrismaClientValidationError para 400 Bad Request sem vazar schema, SQL ou caminhos de arquivo', () => {
+      const validationError = new Prisma.PrismaClientValidationError(
+        'Invalid `prisma.evento.create()` invocation in /home/ikki/Workspace/event-score/src/modules/eventos/eventos.service.ts:42:18\nUnknown argument `campoSecretoSql`: SELECT * FROM usuario WHERE senha_hash = ...',
+        { clientVersion: '7.10.1' },
+      );
+
+      filter.catch(validationError, mockArgumentsHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        statusCode: 400,
+        message: MENSAGEM_ERRO_VALIDACAO_PRISMA,
+        error: 'Bad Request',
+      });
+
+      const corpoSerializado = JSON.stringify(
+        vi.mocked(mockResponse.json).mock.calls[0]?.[0],
+      );
+      expect(corpoSerializado).not.toContain('prisma.evento.create');
+      expect(corpoSerializado).not.toContain('/home/ikki');
+      expect(corpoSerializado).not.toContain('SELECT * FROM');
+      expect(corpoSerializado).not.toContain('senha_hash');
+    });
+
+    it('nunca expõe fragmentos SQL, nomes de tabelas/colunas ou stack traces em erros Prisma ou genéricos', () => {
+      const errosSensiveis: unknown[] = [
+        new Prisma.PrismaClientKnownRequestError(
+          'Invalid `prisma.usuario.findUnique()` invocation in /app/src/auth/auth.service.ts:15:9\nUnique constraint failed on the fields: (`email`)',
+          {
+            code: 'P2002',
+            clientVersion: '7.10.1',
+            meta: { target: ['email'], table: 'public.usuario' },
+          },
+        ),
+        new Prisma.PrismaClientKnownRequestError(
+          ' Raw query failed. Code: `42P01`. Message: `relation "public.tabela_secreta" does not exist` at /app/src/prisma/prisma.service.ts',
+          {
+            code: 'P2010',
+            clientVersion: '7.10.1',
+          },
+        ),
+        new Prisma.PrismaClientUnknownRequestError(
+          'ERROR: syntax error at or near "SELECT" at character 15 (/var/lib/postgresql/data/pg_hba.conf)',
+          { clientVersion: '7.10.1' },
+        ),
+        new Error(
+          'FATAL: password authentication failed for user "eventscore" at /app/dist/main.js:99:12',
+        ),
+      ];
+
+      for (const erro of errosSensiveis) {
+        vi.mocked(mockResponse.json).mockClear();
+        filter.catch(erro, mockArgumentsHost);
+
+        const payload = vi.mocked(mockResponse.json).mock.calls[0]?.[0];
+        const serializado = JSON.stringify(payload);
+
+        expect(payload).toHaveProperty('statusCode');
+        expect(payload).toHaveProperty('message');
+        expect(payload).toHaveProperty('error');
+        expect(Object.keys(payload as Record<string, unknown>)).toEqual([
+          'statusCode',
+          'message',
+          'error',
+        ]);
+        expect(serializado).not.toContain('/app/');
+        expect(serializado).not.toContain('pg_hba.conf');
+        expect(serializado).not.toContain('public.usuario');
+        expect(serializado).not.toContain('tabela_secreta');
+        expect(serializado).not.toContain('password authentication failed');
+        expect(serializado).not.toContain('SELECT');
+      }
     });
   });
 });
