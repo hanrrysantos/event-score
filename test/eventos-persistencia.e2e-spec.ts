@@ -18,6 +18,9 @@ describe('Persistência de eventos (integração)', () => {
     service = module.get(EventosService);
     prisma = module.get(PrismaService);
 
+    await prisma.diaEvento.deleteMany({
+      where: { evento: { nome: { startsWith: PREFIXO } } },
+    });
     await prisma.evento.deleteMany({
       where: { nome: { startsWith: PREFIXO } },
     });
@@ -27,6 +30,9 @@ describe('Persistência de eventos (integração)', () => {
   });
 
   afterAll(async () => {
+    await prisma.diaEvento.deleteMany({
+      where: { evento: { nome: { startsWith: PREFIXO } } },
+    });
     await prisma.evento.deleteMany({
       where: { nome: { startsWith: PREFIXO } },
     });
@@ -65,7 +71,10 @@ describe('Persistência de eventos (integração)', () => {
       dataInicio: '2098-05-10',
       dataFim: '2098-05-12',
     });
-    await expect(service.buscarPorId(primeiro.id)).resolves.toEqual(primeiro);
+    await expect(service.buscarPorId(primeiro.id)).resolves.toEqual({
+      ...primeiro,
+      temResultado: false,
+    });
     await expect(service.obterPeriodoPorId(primeiro.id)).resolves.toEqual({
       eventoId: primeiro.id,
       dataInicio: '2098-05-10',
@@ -88,6 +97,30 @@ describe('Persistência de eventos (integração)', () => {
       dataFim: '2098-05-13',
       ativo: false,
     });
+  });
+
+  it('rejeita alterações que invalidariam dias persistidos', async () => {
+    await prisma.diaEvento.create({
+      data: {
+        eventoId: primeiroEventoId,
+        numeroDia: 3,
+        data: new Date('2098-05-12T00:00:00.000Z'),
+      },
+    });
+
+    await expect(
+      service.atualizar(primeiroEventoId, {
+        dataFim: '2098-05-11',
+        quantidadeDias: 2,
+      }),
+    ).rejects.toThrow(
+      'A alteração deixaria dias já cadastrados fora do período ou da quantidade de dias do evento',
+    );
+    await expect(
+      service.atualizar(primeiroEventoId, { quantidadeDias: 2 }),
+    ).rejects.toThrow(
+      'A alteração deixaria dias já cadastrados fora do período ou da quantidade de dias do evento',
+    );
   });
 
   it('mantém apenas um evento ativo ao trocar a ativação', async () => {

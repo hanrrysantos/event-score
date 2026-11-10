@@ -28,6 +28,10 @@ export interface EventoCadastrado extends DadosEventoValidos {
   ativo: boolean;
 }
 
+export interface EventoDetalhe extends EventoCadastrado {
+  temResultado: boolean;
+}
+
 export interface EventoPeriodo {
   eventoId: number;
   dataInicio: string;
@@ -73,8 +77,23 @@ export class EventosService {
     return eventos.map((evento) => this.mapearEvento(evento));
   }
 
-  async buscarPorId(id: number): Promise<EventoCadastrado> {
-    return this.mapearEvento(await this.buscarRegistroPorId(id));
+  async buscarPorId(id: number): Promise<EventoDetalhe> {
+    const evento = await this.buscarRegistroPorId(id);
+    const [resultado, apuracao] = await Promise.all([
+      this.prisma.resultadoDesafio.findFirst({
+        where: { eventoId: id },
+        select: { id: true },
+      }),
+      this.prisma.apuracao.findFirst({
+        where: { eventoId: id },
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      ...this.mapearEvento(evento),
+      temResultado: resultado !== null || apuracao !== null,
+    };
   }
 
   async buscarAtivo(): Promise<EventoCadastrado> {
@@ -95,6 +114,7 @@ export class EventosService {
   ): Promise<EventoCadastrado> {
     const atual = this.mapearEvento(await this.buscarRegistroPorId(id));
     const dados = this.prepararAtualizacao(atual, dto);
+    await this.validarCompatibilidadeComDias(id, dados, dto);
     const evento = await this.prisma.evento.update({
       where: { id },
       data: {
@@ -136,7 +156,9 @@ export class EventosService {
   }
 
   async obterPeriodoPorId(id: number): Promise<EventoPeriodo> {
-    return this.obterPeriodo(await this.buscarPorId(id));
+    return this.obterPeriodo(
+      this.mapearEvento(await this.buscarRegistroPorId(id)),
+    );
   }
 
   prepararCriacao(dto: CriarEventoDto): NovoEvento {
@@ -194,6 +216,47 @@ export class EventosService {
     }
 
     return evento;
+  }
+
+  private async validarCompatibilidadeComDias(
+    eventoId: number,
+    dados: EventoCadastrado,
+    dto: AtualizarEventoDto,
+  ): Promise<void> {
+    const alteraPeriodo =
+      dto.dataInicio !== undefined ||
+      dto.dataFim !== undefined ||
+      dto.quantidadeDias !== undefined;
+
+    if (!alteraPeriodo) {
+      return;
+    }
+
+    const diaIncompativel = await this.prisma.diaEvento.findFirst({
+      where: {
+        eventoId,
+        OR: [
+          {
+            data: {
+              lt: this.converterDataParaPersistencia(dados.dataInicio),
+            },
+          },
+          {
+            data: {
+              gt: this.converterDataParaPersistencia(dados.dataFim),
+            },
+          },
+          { numeroDia: { gt: dados.quantidadeDias } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (diaIncompativel) {
+      throw new UnprocessableEntityException(
+        'A alteração deixaria dias já cadastrados fora do período ou da quantidade de dias do evento',
+      );
+    }
   }
 
   private mapearEvento(evento: EventoPersistido): EventoCadastrado {

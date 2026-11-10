@@ -37,6 +37,15 @@ type PrismaMock = {
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
   };
+  resultadoDesafio: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  apuracao: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  diaEvento: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -49,6 +58,15 @@ function criarPrismaMock(): PrismaMock {
       findFirst: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+    },
+    resultadoDesafio: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    apuracao: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    diaEvento: {
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     $transaction: vi.fn(),
   };
@@ -230,10 +248,13 @@ describe('EventosService', () => {
     });
   });
 
-  it('consulta eventos por id e o período persistido', async () => {
+  it('consulta o detalhe sem resultados e o período persistido', async () => {
     prisma.evento.findUnique.mockResolvedValue(eventoPersistido);
 
-    await expect(service.buscarPorId(1)).resolves.toEqual(eventoValido);
+    await expect(service.buscarPorId(1)).resolves.toEqual({
+      ...eventoValido,
+      temResultado: false,
+    });
     await expect(service.obterPeriodoPorId(1)).resolves.toEqual({
       eventoId: 1,
       dataInicio: '2026-11-20',
@@ -241,7 +262,32 @@ describe('EventosService', () => {
       quantidadeDias: 3,
     });
     expect(prisma.evento.findUnique).toHaveBeenCalledWith({ where: { id: 1 } });
+    expect(prisma.resultadoDesafio.findFirst).toHaveBeenCalledWith({
+      where: { eventoId: 1 },
+      select: { id: true },
+    });
+    expect(prisma.apuracao.findFirst).toHaveBeenCalledWith({
+      where: { eventoId: 1 },
+      select: { id: true },
+    });
   });
+
+  it.each([
+    ['resultado', { id: 7 }, null],
+    ['apuração', null, { id: 8 }],
+  ])(
+    'indica que o evento possui resultado quando há %s persistido',
+    async (_origem, resultado, apuracao) => {
+      prisma.evento.findUnique.mockResolvedValue(eventoPersistido);
+      prisma.resultadoDesafio.findFirst.mockResolvedValue(resultado);
+      prisma.apuracao.findFirst.mockResolvedValue(apuracao);
+
+      await expect(service.buscarPorId(1)).resolves.toMatchObject({
+        id: 1,
+        temResultado: true,
+      });
+    },
+  );
 
   it('informa quando o evento solicitado não existe', async () => {
     prisma.evento.findUnique.mockResolvedValue(null);
@@ -296,6 +342,39 @@ describe('EventosService', () => {
         quantidadeDias: 3,
       },
     });
+    expect(prisma.diaEvento.findFirst).toHaveBeenCalledWith({
+      where: {
+        eventoId: 1,
+        OR: [
+          { data: { lt: new Date('2026-11-20T00:00:00.000Z') } },
+          { data: { gt: new Date('2026-11-23T00:00:00.000Z') } },
+          { numeroDia: { gt: 3 } },
+        ],
+      },
+      select: { id: true },
+    });
+  });
+
+  it('não consulta dias ao atualizar apenas campos cadastrais', async () => {
+    prisma.evento.findUnique.mockResolvedValue(eventoPersistido);
+    prisma.evento.update.mockResolvedValue({
+      ...eventoPersistido,
+      nome: 'Arena Comp 2026 - Oficial',
+    });
+
+    await service.atualizar(1, { nome: 'Arena Comp 2026 - Oficial' });
+
+    expect(prisma.diaEvento.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('rejeita atualização que invalidaria dias já cadastrados', async () => {
+    prisma.evento.findUnique.mockResolvedValue(eventoPersistido);
+    prisma.diaEvento.findFirst.mockResolvedValue({ id: 10 });
+
+    await expect(service.atualizar(1, { quantidadeDias: 2 })).rejects.toThrow(
+      UnprocessableEntityException,
+    );
+    expect(prisma.evento.update).not.toHaveBeenCalled();
   });
 
   it('troca o evento ativo dentro de uma única transação', async () => {
