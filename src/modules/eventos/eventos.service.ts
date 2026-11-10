@@ -151,11 +151,15 @@ export class EventosService {
     dto: AtualizarEventoDto,
   ): EventoCadastrado {
     const dados = this.validarDados({
-      nome: dto.nome ?? evento.nome,
-      ano: dto.ano ?? evento.ano,
-      dataInicio: dto.dataInicio ?? evento.dataInicio,
-      dataFim: dto.dataFim ?? evento.dataFim,
-      quantidadeDias: dto.quantidadeDias ?? evento.quantidadeDias,
+      nome: dto.nome === undefined ? evento.nome : dto.nome,
+      ano: dto.ano === undefined ? evento.ano : dto.ano,
+      dataInicio:
+        dto.dataInicio === undefined ? evento.dataInicio : dto.dataInicio,
+      dataFim: dto.dataFim === undefined ? evento.dataFim : dto.dataFim,
+      quantidadeDias:
+        dto.quantidadeDias === undefined
+          ? evento.quantidadeDias
+          : dto.quantidadeDias,
     });
 
     return {

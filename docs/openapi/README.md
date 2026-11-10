@@ -1,15 +1,22 @@
-# EventScore — Especificação OpenAPI e Política de Mudanças (US02 / T07)
+# EventScore — Especificação OpenAPI e Processo de Evolução de Contrato (US02 / T07 / T10)
 
-Este diretório contém as especificações formais **OpenAPI 3.0.3** da API RESTful do **EventScore (Arena Comp 2026)** e a política oficial de versionamento e governança de contratos compartilhados entre as equipes de **Backend** e **Frontend**.
+Este diretório contém as especificações formais **OpenAPI 3.0.3** da API RESTful do **EventScore (Arena Comp 2026)** e o processo oficial de publicação, versionamento e governança de contratos compartilhados entre as equipes de **Backend** e **Frontend**.
 
 ---
 
-## 1. Versão Atual do Contrato: `v0.1.0` (Sprint 01)
+## 1. Versão Atual do Contrato: `v0.1.0` (Baseline Sprint 01)
 
-A versão **`v0.1.0`** documenta o escopo fechado e aprovado da **Sprint 01 (S1)**, formalizado no documento [docs/contrato-api-t06.md](../contrato-api-t06.md) e alinhado com a versão **v0.3** do contrato do Frontend (aprovada em 29/10/2026 por Luiz Meneses).
+A versão **`v0.1.0`** documenta o escopo fechado e aprovado da **Sprint 01 (S1)**, formalizado no documento [docs/contrato-api-t06.md](../contrato-api-t06.md) e alinhado com a versão **v0.3** do contrato do Frontend (aprovada formalmente em 29/10/2026 por **Luiz Meneses** — Frontend Lead).
 
-### Arquivo da Especificação:
-- [`openapi-v0.1.yaml`](./openapi-v0.1.yaml)
+### Links de Consumo para o Frontend:
+- **Swagger UI Local (Runtime NestJS):** `http://localhost:3000/api/docs` (especificação JSON em `http://localhost:3000/api/docs-json`)
+- **OpenAPI Spec Estática:** [`docs/openapi/openapi-v0.1.yaml`](./openapi-v0.1.yaml)
+- **Mock Local via Prism:** `npx @stoplight/prism-cli mock docs/openapi/openapi-v0.1.yaml -p 4010`
+
+### Registro de Aprovação do Baseline:
+- **Versão:** `v0.1.0` (Sprint 01 Baseline / Contrato Frontend v0.3)
+- **Aprovador Frontend:** **Luiz Meneses** (Frontend Lead)
+- **Status:** Publicado e Aprovado
 
 ### Escopo de Endpoints da Sprint 01 (17 operações):
 | Módulo | Método | Rota | Descrição |
@@ -25,7 +32,7 @@ A versão **`v0.1.0`** documenta o escopo fechado e aprovado da **Sprint 01 (S1)
 | **Dias** | `GET` | `/api/v1/eventos/{eventoId}/dias` | Listagem cronológica dos dias de competição |
 | **Dias** | `POST` | `/api/v1/eventos/{eventoId}/dias` | Cadastro de dia de evento dentro do intervalo oficial |
 | **Dias** | `PATCH` | `/api/v1/eventos/{eventoId}/dias/{diaId}` | Atualização da data ou número ordinal do dia |
-| **Dias** | `DELETE` | `/api/v1/eventos/{eventoId}/dias/{diaId}` | Exclusão de dia (bloqueado se houver presenças ou desafios) |
+| **Dias** | `DELETE` | `/api/v1/eventos/{eventoId}/dias/{diaId}` | Exclusão de dia (`409` se houver presenças/desafios; `503` se verificação indisponível) |
 | **Grupos** | `GET` | `/api/v1/eventos/{eventoId}/grupos` | Listagem dos grupos do evento com total de participantes |
 | **Grupos** | `GET` | `/api/v1/eventos/{eventoId}/grupos/{grupoId}` | Consulta individual de um grupo |
 | **Grupos** | `POST` | `/api/v1/eventos/{eventoId}/grupos` | Criação de grupo com nome e cor `#RRGGBB` (inicia com 0 participantes) |
@@ -76,53 +83,51 @@ A versão **`v0.1.0`** documenta o escopo fechado e aprovado da **Sprint 01 (S1)
 
 ---
 
-## 3. Política de Versionamento e Evolução de Contratos
+## 3. Processo de Evolução e Versionamento do Contrato
 
-Adotamos os princípios de **Versionamento Semântico (SemVer)** adaptados para contratos de API REST:
+Adotamos os princípios de **Versionamento Semântico (SemVer)** adaptados para contratos de API REST (`vMAJOR.MINOR.PATCH`), aliados a um fluxo estrito de governança **Contract-First**.
 
-```
-vMAJOR.MINOR.PATCH
-```
+### 3.1. Regra de Governança
+Qualquer alteração em **paths**, **parâmetros**, **schemas** ou **status codes** exige obrigatoriamente um **Pull Request (PR) de atualização do contrato** com **revisão e aprovação explícita do Frontend** antes do início ou merge da implementação no Backend.
 
-### 3.1. Fase Inicial de Desenvolvimento (`0.x.y` — Sprints 01 e 02)
-Durante a fase de construção das sprints iniciais, a API evolui rapidamente:
-- **`0.x.0` (MINOR):** Acréscimo de novos módulos (ex.: Sprint 02 com Desafios, Presenças, Bonificações) ou ajustes estruturais aprovados previamente entre Backend e Frontend.
-- **`0.x.y` (PATCH):** Correções de documentação, adição de exemplos realistas, refinamentos textuais de mensagens de erro ou ajustes de regras sem impacto retrocompatível.
-
-### 3.2. Pós-Homologação (`>= 1.0.0`)
-A partir da versão estável homologada:
-- **`MAJOR` (Quebra de Compatibilidade):**
-  - Remoção de qualquer rota existente.
-  - Alteração de verbos HTTP ou renomeação de rotas.
-  - Adição de novo campo obrigatório no corpo (`requestBody`) de rota existente.
-  - Alteração de tipo primitivo de campos (ex.: string para número).
-  - Remoção de propriedades de resposta consumidas pelos clientes.
-  - Mudança de códigos de status de sucesso (ex.: 200 para 204).
-- **`MINOR` (Evolução Retrocompatível):**
+### 3.2. Classificação de Mudanças
+- **Compatíveis (*Non-breaking*):**
   - Adição de novos endpoints e recursos.
-  - Adição de novos campos opcionais em requisições existentes.
-  - Adição de novas propriedades informativas em corpos de resposta.
-  - Inclusão de novos valores em enums nos quais o cliente já trate valores desconhecidos com tolerância.
-- **`PATCH` (Correções e Ajustes Transparentes):**
-  - Correção de bugs de especificação que não alterem a semântica de dados.
-  - Melhorias e enriquecimento de descrições e mocks.
+  - Adição de campos opcionais em requisições (`requestBody` ou `query`).
+  - Adição de novos campos em respostas (`response`).
+  - **Ação de versão:** Bump de `MINOR` (ou `PATCH` para ajustes documentais/exemplos sem mudança estrutural).
+- **Incompatíveis (*Breaking*):**
+  - Remoção ou renomeação de rotas ou campos existentes.
+  - Alteração de tipos de dados (ex.: `string` para `number`, ou remoção/renomeação de valores de `enum`).
+  - Inclusão de novos campos obrigatórios em requisições existentes.
+  - Mudança na semântica de status codes (ex.: alterar retorno de erro ou sucesso esperado pelo cliente).
+  - **Ação de versão:** Exige alinhamento prévio (ADR / Workshop), aprovação explícita do **Frontend Lead (Luiz Meneses)** e bump de versão.
 
-### 3.3. Tabela Comparativa de Mudanças:
+### 3.3. Ciclo de Vida das Versões (`0.x.y` vs. `>= 1.0.0`)
+- **Fase Inicial de Desenvolvimento (`0.x.y` — Sprints 01 e 02):**
+  - **`0.x.0` (MINOR):** Acréscimo de novos módulos (ex.: Sprint 02 com Desafios, Presenças, Bonificações, Configuração) ou ajustes estruturais aprovados previamente entre Backend e Frontend.
+  - **`0.x.y` (PATCH):** Correções de documentação, adição de exemplos realistas, refinamentos textuais de mensagens de erro (como a mensagem canônica da RF03 `"os grupos não podem mais ser alterados porque já há resultado lançado"`) ou ajustes sem impacto retrocompatível.
+- **Pós-Homologação (`>= 1.0.0`):**
+  - **`MAJOR`:** Reservado para mudanças incompatíveis (*breaking changes*).
+  - **`MINOR`:** Evoluções retrocompatíveis (*non-breaking*).
+  - **`PATCH`:** Correções e esclarecimentos de especificação que não alterem a semântica de dados.
+
+### 3.4. Tabela Comparativa de Mudanças:
 
 | Tipo de Mudança | Exemplo Prático | Classificação | Ação Requerida |
 |---|---|---|---|
-| Adicionar novo endpoint | `GET /api/v1/eventos/{eventoId}/desafios` | **Compatível (MINOR)** | Incrementar versão MINOR |
-| Adicionar campo opcional no body | `PATCH /eventos/{id}` aceita `descricao?` | **Compatível (MINOR)** | Atualizar DTOs e frontend |
-| Adicionar campo novo na resposta | `GET /eventos` inclui `totalGrupos` | **Compatível (MINOR)** | Frontend ignora ou consome |
-| Renomear campo existente | Renomear `dataInicio` para `inicio` | **Breaking Change (MAJOR)** | Exige alinhamento em Workshop e RFC |
-| Tornar campo opcional em obrigatório | Tornar `ano` obrigatório no PATCH | **Breaking Change (MAJOR)** | Exige alteração coordenada no Frontend |
-| Remover endpoint ou método | Deletar rota de exclusão | **Breaking Change (MAJOR)** | Exige transição planejada |
+| Adicionar novo endpoint | `GET /api/v1/eventos/{eventoId}/desafios` | **Compatível (Non-breaking)** | PR de contrato + bump de `MINOR` |
+| Adicionar campo opcional no body | `PATCH /eventos/{id}` aceita `descricao?` | **Compatível (Non-breaking)** | PR de contrato + bump de `MINOR` |
+| Adicionar campo novo na resposta | `GET /eventos` inclui `totalGrupos` | **Compatível (Non-breaking)** | PR de contrato + bump de `MINOR` |
+| Renomear ou remover rota/campo | Renomear `dataInicio` para `inicio` | **Incompatível (Breaking)** | Alinhamento prévio (ADR/Workshop), aprovação do Frontend Lead e bump de versão |
+| Novo campo obrigatório em requisição | Tornar `ano` obrigatório no `PATCH` | **Incompatível (Breaking)** | Alinhamento prévio (ADR/Workshop), aprovação do Frontend Lead e bump de versão |
+| Alterar tipo ou semântica de status code | Mudar tipo de campo ou código de erro | **Incompatível (Breaking)** | Alinhamento prévio (ADR/Workshop), aprovação do Frontend Lead e bump de versão |
 
-### 3.4. Fluxo de Governança para Mudanças de Contrato:
+### 3.5. Passo a Passo do Fluxo de Governança:
 1. **Identificação da Necessidade:** Qualquer membro do Backend ou Frontend abre o apontamento no canal de integração do projeto.
-2. **Registro de Decisão:** Caso aceito, o ajuste é registrado em documento de workshop (`docs/contrato-api-t*.md`).
-3. **Atualização do OpenAPI:** O arquivo `docs/openapi/openapi-v*.yaml` é atualizado na branch correspondente.
-4. **Revisão Cruzada Obrigatória (Pull Request):** O PR de alteração do contrato precisa obrigatoriamente de aprovação do líder de frontend e do líder de backend antes do início da implementação no código.
+2. **Alinhamento e Registro (ADR / Workshop):** Mudanças estruturais ou incompatíveis são registradas em ADR (`docs/adr/`) e/ou ata de contrato (`docs/contrato-api-t06.md`).
+3. **Atualização do OpenAPI:** O arquivo `docs/openapi/openapi-v0.1.yaml` (ou nova versão) é atualizado em branch dedicada.
+4. **Revisão Cruzada Obrigatória (Pull Request):** O PR de alteração do contrato precisa obrigatoriamente de aprovação explícita do **Frontend Lead (Luiz Meneses)** e revisão do Backend antes da implementação no código.
 
 ---
 
@@ -161,8 +166,9 @@ npx -y @stoplight/prism-cli mock docs/openapi/openapi-v0.1.yaml -p 4010 --errors
 ---
 
 ### 4.2. Visualização Interativa no Swagger UI / Editor
-1. **Via Web:** Acesse [https://editor.swagger.io](https://editor.swagger.io) e importe o arquivo `docs/openapi/openapi-v0.1.yaml`.
-2. **Via VS Code / Antigravity IDE:**
+1. **Via Servidor Local (NestJS Runtime):** Com a aplicação rodando (`npm run start:dev`), acesse `http://localhost:3000/api/docs` (ou baixe o JSON dinâmico em `http://localhost:3000/api/docs-json`).
+2. **Via Web (Swagger Editor):** Acesse [https://editor.swagger.io](https://editor.swagger.io) e importe o arquivo `docs/openapi/openapi-v0.1.yaml`.
+3. **Via VS Code / Antigravity IDE:**
    - Instale a extensão `OpenAPI (Swagger) Editor` ou `Swagger Viewer`.
    - Abra o arquivo `openapi-v0.1.yaml` e pressione `Shift + Alt + P` para visualizar a interface interativa.
 

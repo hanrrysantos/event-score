@@ -29,12 +29,15 @@
     "db:deploy": "prisma migrate deploy",
     "db:sync": "npm run db:deploy && npm run db:generate",
     "db:studio": "prisma studio",
+    "db:seed": "npm run build && node --env-file-if-exists=.env dist/scripts/seed-dev.js",
+    "db:admin": "node --env-file-if-exists=.env dist/scripts/criar-admin.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
+    "@nestjs/jwt": "^12.0.4",
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/swagger": "^12.0.5",
     "@nestjs/terminus": "^12.1.0",

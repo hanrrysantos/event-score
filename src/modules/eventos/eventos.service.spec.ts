@@ -4,6 +4,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { AtualizarEventoDto } from './dto/atualizar-evento.dto.js';
 import { EventosService } from './eventos.service.js';
 import type { EventoCadastrado } from './eventos.service.js';
 
@@ -138,7 +139,7 @@ describe('EventosService', () => {
     });
   });
 
-  it('combina atualização parcial e preserva identidade e estado ativo', () => {
+  it('atualiza os campos informados e preserva os campos ausentes, identidade e estado ativo', () => {
     const resultado = service.prepararAtualizacao(eventoValido, {
       nome: '  Arena Comp 2026 - Edição Oficial  ',
       dataFim: '2026-11-23',
@@ -149,6 +150,27 @@ describe('EventosService', () => {
       nome: 'Arena Comp 2026 - Edição Oficial',
       dataFim: '2026-11-23',
     });
+  });
+
+  it.each([
+    { nome: null },
+    { ano: null },
+    { dataInicio: null },
+    { dataFim: null },
+    { quantidadeDias: null },
+  ])('rejeita null informado explicitamente na atualização: %o', (dto) => {
+    expect(() =>
+      service.prepararAtualizacao(
+        eventoValido,
+        dto as unknown as AtualizarEventoDto,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejeita nome vazio ou composto somente por espaços na atualização', () => {
+    expect(() =>
+      service.prepararAtualizacao(eventoValido, { nome: '   ' }),
+    ).toThrow(BadRequestException);
   });
 
   it('revalida o período completo depois de uma atualização parcial', () => {
