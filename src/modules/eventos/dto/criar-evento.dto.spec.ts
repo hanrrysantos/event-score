@@ -50,4 +50,13 @@ describe('AtualizarEventoDto', () => {
 
     expect(await validate(dto)).not.toHaveLength(0);
   });
+
+  it.each(['nome', 'ano', 'dataInicio', 'dataFim', 'quantidadeDias'])(
+    'rejeita null informado explicitamente em %s',
+    async (campo) => {
+      const dto = plainToInstance(AtualizarEventoDto, { [campo]: null });
+
+      expect(await validate(dto)).not.toHaveLength(0);
+    },
+  );
 });
