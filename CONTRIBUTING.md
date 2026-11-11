@@ -140,8 +140,12 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm test
-npm run test:e2e
+TEST_DATABASE_URL=postgresql://usuario:senha@localhost:5432/eventscore_test npm run test:e2e
 ```
+
+O banco informado em `TEST_DATABASE_URL` deve ser exclusivo para testes e ter
+um nome que contenha o marcador `test`. A suíte recusa conexões sem essa
+proteção.
 
 Se a formatação falhar, `npm run format` corrige.
 

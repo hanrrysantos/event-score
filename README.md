@@ -88,7 +88,7 @@ Basta rodar `npm run start:dev` de novo: migrações novas são aplicadas e o Pr
 | `npm test` | Testes unitários |
 | `npm run test:watch` | Testes unitários em modo observação |
 | `npm run test:cov` | Testes unitários com relatório de cobertura |
-| `npm run test:e2e` | Testes e2e (exigem o PostgreSQL rodando) |
+| `npm run test:e2e` | Testes e2e (exigem `TEST_DATABASE_URL` apontando para um banco exclusivo) |
 | **Banco de dados** | |
 | `npm run db:migrate` | Cria uma migração a partir de mudanças no `schema.prisma` e aplica |
 | `npm run db:deploy` | Aplica migrações pendentes |
@@ -106,6 +106,7 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `NODE_ENV` | API | `development`, `test` ou `production` (padrão: `development`) |
 | `PORT` | API | Porta HTTP (padrão: `3000`) |
 | `DATABASE_URL` | API e Prisma | URL de conexão com o PostgreSQL |
+| `TEST_DATABASE_URL` | Testes e2e | URL explícita de um banco exclusivo cujo nome contenha `test` |
 | `POSTGRES_USER` | Compose | Usuário do banco |
 | `POSTGRES_PASSWORD` | Compose | Senha do banco |
 | `POSTGRES_DB` | Compose | Nome do banco |
@@ -115,6 +116,16 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres. O `db:admin` recusa o valor de exemplo do `.env.example` |
 
 `DATABASE_URL` deve usar o mesmo usuário, senha, porta e banco das variáveis `POSTGRES_*`.
+
+Os testes e2e que alteram dados recusam a execução sem `TEST_DATABASE_URL` ou
+quando o nome do banco não contém o marcador `test`. Crie e migre um banco
+separado antes de executá-los, por exemplo:
+
+```bash
+createdb -h localhost -U eventscore eventscore_test
+DATABASE_URL=postgresql://eventscore:eventscore@localhost:5432/eventscore_test npm run db:deploy
+TEST_DATABASE_URL=postgresql://eventscore:eventscore@localhost:5432/eventscore_test npm run test:e2e
+```
 
 ## Estrutura
 

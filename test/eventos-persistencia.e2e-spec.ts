@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module.js';
 import { EventosService } from '../src/modules/eventos/eventos.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
-const PREFIXO = 'T20 Integração';
+const PREFIXO = `T20 Integração ${randomUUID()}`;
 
 describe('Persistência de eventos (integração)', () => {
   let module: TestingModule;
@@ -12,33 +13,34 @@ describe('Persistência de eventos (integração)', () => {
   let eventoAtivoOriginalId: number | undefined;
   let primeiroEventoId: number;
   let segundoEventoId: number;
+  const eventoIdsCriados: number[] = [];
+  const diaIdsCriados: number[] = [];
 
   beforeAll(async () => {
     module = await Test.createTestingModule({ imports: [AppModule] }).compile();
     service = module.get(EventosService);
     prisma = module.get(PrismaService);
 
-    await prisma.diaEvento.deleteMany({
-      where: { evento: { nome: { startsWith: PREFIXO } } },
-    });
-    await prisma.evento.deleteMany({
-      where: { nome: { startsWith: PREFIXO } },
-    });
     eventoAtivoOriginalId = (
       await prisma.evento.findFirst({ where: { ativo: true } })
     )?.id;
   });
 
   afterAll(async () => {
-    await prisma.diaEvento.deleteMany({
-      where: { evento: { nome: { startsWith: PREFIXO } } },
-    });
-    await prisma.evento.deleteMany({
-      where: { nome: { startsWith: PREFIXO } },
-    });
+    if (diaIdsCriados.length > 0) {
+      await prisma.diaEvento.deleteMany({
+        where: { id: { in: diaIdsCriados } },
+      });
+    }
+
+    if (eventoIdsCriados.length > 0) {
+      await prisma.evento.deleteMany({
+        where: { id: { in: eventoIdsCriados } },
+      });
+    }
 
     if (eventoAtivoOriginalId !== undefined) {
-      await prisma.evento.update({
+      await prisma.evento.updateMany({
         where: { id: eventoAtivoOriginalId },
         data: { ativo: true },
       });
@@ -55,6 +57,9 @@ describe('Persistência de eventos (integração)', () => {
       dataFim: '2098-05-12',
       quantidadeDias: 3,
     });
+    primeiroEventoId = primeiro.id;
+    eventoIdsCriados.push(primeiro.id);
+
     const segundo = await service.criar({
       nome: `${PREFIXO} B`,
       ano: 2099,
@@ -62,8 +67,8 @@ describe('Persistência de eventos (integração)', () => {
       dataFim: '2099-06-02',
       quantidadeDias: 2,
     });
-    primeiroEventoId = primeiro.id;
     segundoEventoId = segundo.id;
+    eventoIdsCriados.push(segundo.id);
 
     expect(primeiro).toMatchObject({
       nome: `${PREFIXO} A`,
@@ -100,13 +105,14 @@ describe('Persistência de eventos (integração)', () => {
   });
 
   it('rejeita alterações que invalidariam dias persistidos', async () => {
-    await prisma.diaEvento.create({
+    const dia = await prisma.diaEvento.create({
       data: {
         eventoId: primeiroEventoId,
         numeroDia: 3,
         data: new Date('2098-05-12T00:00:00.000Z'),
       },
     });
+    diaIdsCriados.push(dia.id);
 
     await expect(
       service.atualizar(primeiroEventoId, {
