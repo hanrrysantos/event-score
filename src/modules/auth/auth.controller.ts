@@ -3,6 +3,7 @@ import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { LoginDto } from './dto/login.dto.js';
 import { LoginService } from './login.service.js';
 import type { LoginResponse } from './login.service.js';
+import { Public } from './public.decorator.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -10,6 +11,7 @@ export class AuthController {
   constructor(private readonly loginService: LoginService) {}
 
   @Post('login')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Autenticar administrador' })
   @ApiBody({

@@ -12,7 +12,15 @@ export function configurarSwagger(app: INestApplication): void {
     .setTitle('EventScore API')
     .setDescription('API de apuração e gestão do EventScore (Arena Comp 2026)')
     .setVersion('0.1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Informe o JWT recebido em POST /api/v1/auth/login.',
+      },
+      'bearer',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig, {
     // Os DTOs precisam aparecer mesmo antes da implementação das rotas da T18.

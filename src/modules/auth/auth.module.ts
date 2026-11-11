@@ -2,6 +2,7 @@ import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthUserRepository } from './auth-user.repository.js';
@@ -39,6 +40,7 @@ export class AuthModule {
         AuthService,
         LoginService,
         JwtAuthGuard,
+        { provide: APP_GUARD, useExisting: JwtAuthGuard },
       ],
       exports: [
         AuthService,

@@ -111,4 +111,13 @@ describe('Swagger de eventos', () => {
       },
     });
   });
+
+  it('publica o esquema Bearer JWT para as rotas administrativas', () => {
+    expect(document.components?.securitySchemes?.bearer).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    });
+    expect(document.security).toBeUndefined();
+  });
 });
