@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { EventosModule } from '../modules/eventos/eventos.module.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { configurarSwagger } from './swagger.js';
 
 describe('Swagger de eventos', () => {
@@ -12,8 +14,11 @@ describe('Swagger de eventos', () => {
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
-      imports: [EventosModule],
-    }).compile();
+      imports: [PrismaModule, EventosModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api/v1', { exclude: ['health'] });
     configurarSwagger(app);
