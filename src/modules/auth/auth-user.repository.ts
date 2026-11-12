@@ -7,8 +7,9 @@ export interface AuthUser {
   ativo: boolean;
 }
 
-// A implementação da consulta ao PostgreSQL pertence à T15.
+export type AuthUserIdentity = Omit<AuthUser, 'senhaHash'>;
+
 export abstract class AuthUserRepository {
   abstract findByEmail(email: string): Promise<AuthUser | null>;
-  abstract findById(id: number): Promise<AuthUser | null>;
+  abstract findById(id: number): Promise<AuthUserIdentity | null>;
 }
