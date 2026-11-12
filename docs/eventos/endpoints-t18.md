@@ -25,17 +25,18 @@ de unicidade de nome e ano já tratados pelo filtro global.
 ## Autenticação e dependência externa
 
 A T14 (PR #25 / Taiga #194) registra o guard global quando
-`AuthModule.register(...)` é importado. A integração desse módulo em
-`AppModule`, com o repositório real de usuários, pertence à T15 / Taiga #195.
-Na base desta entrega, essa integração ainda está pendente. Portanto, as
-rotas na aplicação principal ainda não exigem autenticação, mesmo com Bearer
-documentado. A T18 não está liberada para exposição em homologação ou produção
-até a T15 ativar e validar essa proteção na aplicação principal.
+`AuthModule.register(...)` é importado. A T15 (PR #27 / Taiga #195) integrou
+esse módulo em `AppModule` com o repositório real de usuários. A branch da T18
+incorpora essa integração: as seis rotas agora exigem JWT de um administrador
+ativo na aplicação principal. O bloqueio externo da T15 está resolvido.
 
 Os testes desta task importam o `AuthModule` oficial com repositório de usuários
 simulado e confirmam que as seis rotas herdam o guard global, aceitam JWT válido
 e rejeitam token ausente ou inválido com 401. Nenhum repositório provisório é
-usado na aplicação principal.
+usado na aplicação principal. A suíte `test/eventos-acesso.e2e-spec.ts` também
+usa o `AppModule` real e PostgreSQL: valida 401 nas seis rotas, login com senha
+Argon2id e acesso autenticado à listagem, criação e detalhe de eventos. Seus
+dados têm UUID por execução e a limpeza usa somente os IDs criados.
 
 ## Cobertura e próximas entregas
 
@@ -45,20 +46,21 @@ de `/ativo` sobre `/{eventoId}`. Os testes de Swagger verificam os schemas
 efetivamente publicados. A persistência continua coberta pela suíte da T20.
 
 A T19 / Taiga #183 acrescentará a integração HTTP com PostgreSQL e o login
-real após a T15. Os testes com banco devem usar exclusivamente
+real de forma abrangente, complementando a verificação de acesso desta task.
+Os testes com banco devem usar exclusivamente
 `TEST_DATABASE_URL`, conforme o README.
 
 ## Frontend e Taiga
 
 Lista, formulário de cadastro/edição, seleção de evento ativo e detalhe podem
 ser preparados a partir do contrato e testados localmente com estas rotas.
-A integração autenticada completa depende de T15 e T19; a T18 sozinha não
+A integração autenticada pode ser iniciada após o merge da T18; o aceite
+completo depende da T19. A T18 sozinha não
 representa o aceite da US04 nem da gestão de eventos #226.
 
 - T20 / #184: fechado após o merge do PR #24.
-- T18 / #182: em andamento enquanto o PR estiver em Draft; pronto para teste
-  quando for liberado para revisão após a integração da T15.
-- T19 / #183: novo; fechamento depende da autenticação real.
+- T18 / #182: pronto para teste quando o PR sair de Draft após a CI verde.
+- T19 / #183: novo; iniciar após o merge da T18.
 - US04 / #179: em andamento.
 
 As movimentações acima são orientações para atualização manual no Taiga.
