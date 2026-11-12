@@ -12,7 +12,6 @@ import { PasswordHashService } from './password-hash.service.js';
 
 @Module({})
 export class AuthModule {
-  // A T15 fornecerá o repositório real quando o modelo USUARIO estiver integrado.
   static register(repository: Provider<AuthUserRepository>): DynamicModule {
     return {
       module: AuthModule,

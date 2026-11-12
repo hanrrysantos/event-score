@@ -2,8 +2,8 @@
 
 ## Regra de acesso
 
-`AuthModule.register(...)` registra `JwtAuthGuard` como guard global. Quando o
-módulo estiver integrado à aplicação, toda rota de controller exigirá um JWT no
+`AuthModule.register(...)` registra `JwtAuthGuard` como guard global. Com o
+módulo integrado à aplicação pela #195, toda rota de controller exige um JWT no
 cabeçalho `Authorization: Bearer <token>`, salvo se estiver marcada com `@Public()`.
 O guard verifica assinatura e expiração do token e consulta o usuário pelo ID do
 payload. Só permite contas ativas com `perfil = ADMIN`. Token ausente, inválido,
@@ -12,6 +12,7 @@ expirado ou vinculado a conta sem permissão retorna HTTP 401.
 | Rota ou grupo | Regra |
 | --- | --- |
 | `POST /api/v1/auth/login` | Pública; recebe e-mail e senha. |
+| `GET /api/v1/auth/me` | Protegida; devolve os dados públicos do administrador autenticado. |
 | `GET /health` | Pública; atende à verificação de infraestrutura. |
 | Eventos | Protegidas por padrão. |
 | Grupos e dias do evento | Protegidas por padrão quando os controllers forem implementados. |
@@ -37,16 +38,10 @@ O arquivo `docs/openapi/openapi-v0.1.yaml` pertence à task de contrato da API e
 já define Bearer como segurança padrão, com exceção explícita para login.
 Alterações naquele contrato devem ser alinhadas com seu responsável.
 
-## Integração pendente da #195
+## Integração da #195
 
-A aplicação principal ainda não importa `AuthModule.register(...)`: falta o
-provedor real de `AuthUserRepository`, que consultará `USUARIO` no PostgreSQL.
-Logo, a proteção global desta task está pronta e testada em um módulo Nest com
-repositório simulado, mas **ainda não está ativa na aplicação principal**.
-Integrar o módulo sem esse provedor impediria a inicialização ou exigiria uma
-implementação provisória de persistência, fora do escopo da #194.
-
-Na #195, registrar `AuthModule.register(...)` uma única vez em `AppModule` com o
-repositório real, manter `JWT_SECRET` configurado e acrescentar testes HTTP com
-o banco. Os controllers futuros de eventos, grupos e dias herdarão a proteção
-global. Antes da revisão dessas tasks, confirmar também suas anotações Swagger.
+`AppModule` registra `AuthModule.register(...)` uma única vez, com o repositório
+Prisma de `usuario`. A API exige `JWT_SECRET` ao iniciar. Os testes HTTP de
+integração usam um banco exclusivo, criam administradores temporários, validam
+o login e exercitam a proteção global. Controllers futuros de eventos, grupos
+e dias herdarão o guard; seus responsáveis devem conferir as anotações Swagger.
