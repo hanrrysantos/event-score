@@ -14,8 +14,7 @@ await executarScript('seed-dev', async (prisma) => {
     );
   }
 
-  // A senha de exemplo do .env.example é aceita só aqui, no desenvolvimento.
-  const admin = lerAdminEnv(process.env, { permitirSenhaPadrao: true });
+  const admin = lerAdminEnv(process.env);
   const massa = await aplicarMassaDev(prisma);
   // Não regrava um admin que já existe: a senha pode ter sido trocada localmente.
   const resultadoAdmin = await criarOuAtualizarAdmin(prisma, admin, {
@@ -29,7 +28,7 @@ await executarScript('seed-dev', async (prisma) => {
           ? ' (ativo)'
           : ' (inativo: já havia outro evento ativo)'),
       `[seed-dev] inseridos: ${massa.dias} dia(s), ${massa.grupos} grupo(s), ${massa.fatores} fator(es) de presença`,
-      `[seed-dev] administrador ${admin.ADMIN_EMAIL} ${resultadoAdmin === 'mantido' ? 'já existia (mantido sem alterar a senha; use npm run db:admin para atualizar)' : resultadoAdmin}`,
+      `[seed-dev] administrador ${admin.ADMIN_EMAIL} ${resultadoAdmin === 'mantido' ? 'já existia (mantido sem alterar a senha; use ADMIN_ATUALIZAR_EXISTENTE=true com npm run db:admin para atualizar)' : resultadoAdmin}`,
     ].join('\n'),
   );
 });

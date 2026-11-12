@@ -1,6 +1,6 @@
 # US03 / Taiga #191 — Fluxo de login e usuários
 
-**Status:** proposta para revisão da equipe e alinhamento com o Front-end.
+**Status:** fluxo implementado no backend; alinhamento com Front-end e contrato permanece pendente.
 
 **Escopo:** definição do fluxo de autenticação de administradores.
 
@@ -19,7 +19,7 @@
 | Administrador inicial | Um comando/seed controlado cria a conta, recebendo a senha por variável de ambiente local e persistindo somente o hash.                                                                                 |
 | Erro de autenticação  | Usuário inexistente, senha incorreta, conta inativa e perfil não autorizado recebem HTTP 401 com mensagem genérica.                                                                                     |
 
-Essas regras descrevem o comportamento pretendido da US03. A task #192 implementa a validação de credenciais em serviço, mas a rota HTTP, o JWT e a persistência ainda dependem das tasks seguintes.
+Essas regras estão implementadas no backend pelas tasks #192 a #195. O contrato/OpenAPI de outro integrante ainda precisa refletir a política exclusiva de `ADMIN`.
 
 ## 2. Fluxo de autenticação
 
@@ -97,13 +97,13 @@ Token ausente, inválido ou expirado deve resultar em HTTP 401. Senha e hash nun
 
 ## 4. Administrador inicial
 
-**Procedimento definido para a T15:** criar o primeiro administrador por um comando/seed controlado. O e-mail e a senha inicial serão fornecidos por variáveis de ambiente locais no momento da execução. A senha não pode ser versionada nem gravada em texto puro no banco. O processo aplica Argon2id antes de persistir, define `perfil = ADMIN` e `ativo = true`, não imprime a senha em logs e deve ser seguro para executar novamente sem duplicar a conta ou sobrescrever automaticamente uma conta existente.
+**Procedimento implementado na T15:** `npm run db:admin` lê `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` do ambiente. A senha deve ter ao menos 12 caracteres. O processo aplica Argon2id antes de persistir, define `perfil = ADMIN` e `ativo = true`, não imprime a senha em logs e mantém uma conta existente inalterada. Para atualizar senha, nome e estado da conta existente, é necessário definir `ADMIN_ATUALIZAR_EXISTENTE=true` somente na execução desejada.
 
 Não incluir credenciais reais, hashes predefinidos nem exemplos funcionais de senha em arquivos versionados. As variáveis usadas para a execução não devem ser gravadas em `.env` versionado nem expostas na saída do comando.
 
-Antes da implementação, a equipe precisa definir quem executará o procedimento em cada ambiente, como a senha inicial será entregue ao responsável e como será feita sua troca, caso necessária. Os nomes das variáveis serão definidos na T15.
+A equipe precisa definir quem executará o procedimento em cada ambiente e como a senha inicial será entregue ao responsável. As variáveis e o procedimento de troca estão descritos no README.
 
-**Validação no login e criação da senha são regras diferentes.** No login, a #192 exige que a senha seja informada; em seguida, compara-a com o hash da conta. A exigência de tamanho ou complexidade para **criar** a senha inicial ainda não foi definida. A frase “senha deve ter pelo menos 6 caracteres” aparece apenas em um exemplo de erro do OpenAPI de outra branch; ela não corresponde à validação de login implementada na #192.
+**Validação no login e criação da senha são regras diferentes.** No login, a #192 exige que a senha seja informada; em seguida, compara-a com o hash da conta. A criação da senha inicial exige ao menos 12 caracteres; não há outra regra de complexidade definida. A frase “senha deve ter pelo menos 6 caracteres” aparece apenas em um exemplo de erro do OpenAPI de outra branch; ela não corresponde à regra adotada.
 
 ## 5. Identidade, proteção de rotas e auditoria
 
@@ -117,7 +117,7 @@ As rotas administrativas de eventos, dias e grupos deverão exigir autenticaçã
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Tempo de expiração do JWT             | **Definido para a US03: 1 hora.** Encaminhar ao responsável pelo contrato/OpenAPI e ao Front-end.                                                                                                                                                 |
 | Seed do administrador                 | **Método definido: comando/seed controlado com senha fornecida por variável de ambiente local.** Falta definir o responsável pela execução e a entrega segura da senha em cada ambiente.                                                          |
-| Regra para criar a senha inicial      | **A definir na T15:** tamanho e complexidade exigidos pelo comando/seed. Isso não altera a verificação da senha no login. O exemplo de erro do OpenAPI que menciona mínimo de seis caracteres deve ser alinhado com a regra efetivamente adotada. |
+| Regra para criar a senha inicial      | **Definida na T15:** mínimo de 12 caracteres no comando/seed. Isso não altera a verificação da senha no login. O exemplo de erro do OpenAPI que menciona mínimo de seis caracteres deve ser alinhado com a regra adotada. |
 | Perfil descrito no OpenAPI            | **Divergente.** A descrição atual diz “organizador ou administrador”; a decisão da US03 admite apenas `ADMIN`. Solicitar correção ao responsável pelo contrato.                                                                                   |
 | Respostas e uso do token no Front-end | **A validar.** Confirmar campos do login, tratamento de 400/401, expiração e uso de `/auth/me` com o Front-end.                                                                                                                                   |
 | Contrato e OpenAPI                    | **Dependência de outra task.** Encaminhar as decisões aprovadas ao integrante responsável; este documento não altera o contrato.                                                                                                                  |

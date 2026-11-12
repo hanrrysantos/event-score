@@ -36,6 +36,8 @@ npm ci
 
 # 4. Criar o arquivo de ambiente local
 cp .env.example .env
+# Edite .env e configure JWT_SECRET (openssl rand -hex 32) e ADMIN_SENHA.
+# O arquivo de exemplo não traz uma senha de administrador funcional.
 
 # 5. Subir o PostgreSQL
 docker compose up -d
@@ -57,7 +59,9 @@ Em homologação e produção não se usa o seed, que traz dados fictícios e se
 npm run db:admin
 ```
 
-O `db:admin` recusa a senha de exemplo do `.env.example` (`troque-esta-senha`), que é pública; ela só é aceita pelo seed de desenvolvimento. O script usa a versão compilada em `dist/`, então não precisa das dependências de desenvolvimento. Se o e-mail já existir, ele atualiza o nome e a senha, o que serve também para trocar a senha.
+O `db:admin` e o seed recusam a senha pública que aparecia em versões anteriores do `.env.example`. O script usa a versão compilada em `dist/`, então não precisa das dependências de desenvolvimento. Se o e-mail já existir, ele **mantém a conta sem alterar a senha**. Para trocar a senha ou reativar um administrador existente, execute o comando com `ADMIN_ATUALIZAR_EXISTENTE=true` definido apenas nessa execução. Em produção, entregue as variáveis por um mecanismo seguro do ambiente, sem colocá-las no histórico do terminal ou em arquivos versionados. Se já criou o administrador com a antiga senha de exemplo, troque-a antes de usar o login.
+
+A API exige `JWT_SECRET` com pelo menos 32 caracteres e falha ao iniciar se ele estiver ausente. Gere um segredo distinto por ambiente e guarde-o fora do Git. A troca do segredo invalida todos os tokens emitidos anteriormente. O acesso ocorre por `POST /api/v1/auth/login`; `GET /api/v1/auth/me` exige Bearer JWT. Os tokens expiram em uma hora. Apenas contas ativas com `perfil = ADMIN` podem autenticar-se, e não existe cadastro público.
 
 Para conferir se está tudo funcionando:
 
@@ -95,7 +99,7 @@ Basta rodar `npm run start:dev` de novo: migrações novas são aplicadas e o Pr
 | `npm run db:generate` | Gera o Prisma Client |
 | `npm run db:studio` | Abre uma interface web para ver e editar os dados |
 | `npm run db:seed` | Compila e popula o banco com a massa de desenvolvimento e o administrador |
-| `npm run db:admin` | Cria ou atualiza só o administrador (exige `npm run build` antes) |
+| `npm run db:admin` | Cria o administrador; preserva contas existentes por padrão (exige `npm run build` antes) |
 
 ## Variáveis de ambiente
 
@@ -106,6 +110,7 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `NODE_ENV` | API | `development`, `test` ou `production` (padrão: `development`) |
 | `PORT` | API | Porta HTTP (padrão: `3000`) |
 | `DATABASE_URL` | API e Prisma | URL de conexão com o PostgreSQL |
+| `JWT_SECRET` | API | Segredo de assinatura do JWT, obrigatório, com no mínimo 32 caracteres |
 | `TEST_DATABASE_URL` | Testes e2e | URL explícita de um banco exclusivo cujo nome contenha `test` |
 | `POSTGRES_USER` | Compose | Usuário do banco |
 | `POSTGRES_PASSWORD` | Compose | Senha do banco |
@@ -113,7 +118,8 @@ Definidas no `.env` (copiado de `.env.example`, nunca versionado). A aplicação
 | `POSTGRES_PORT` | Compose | Porta exposta na sua máquina (padrão: `5432`) |
 | `ADMIN_NOME` | Seed e `db:admin` | Nome do administrador |
 | `ADMIN_EMAIL` | Seed e `db:admin` | E-mail de login do administrador (gravado em minúsculas) |
-| `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres. O `db:admin` recusa o valor de exemplo do `.env.example` |
+| `ADMIN_SENHA` | Seed e `db:admin` | Senha do administrador, com ao menos 12 caracteres; a antiga senha pública é recusada |
+| `ADMIN_ATUALIZAR_EXISTENTE` | `db:admin` | Use `true` apenas quando quiser trocar a senha ou reativar uma conta existente |
 
 `DATABASE_URL` deve usar o mesmo usuário, senha, porta e banco das variáveis `POSTGRES_*`.
 

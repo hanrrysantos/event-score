@@ -43,4 +43,13 @@ export class AuthService {
 
     return { id: user.id, nome: user.nome, email: user.email };
   }
+
+  async getCurrentUser(id: number): Promise<AuthenticatedUser> {
+    const user = await this.users.findById(id);
+    if (!user || !user.ativo || user.perfil !== 'ADMIN') {
+      throw new UnauthorizedException('Token ausente ou inválido');
+    }
+
+    return { id: user.id, nome: user.nome, email: user.email };
+  }
 }

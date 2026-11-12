@@ -20,20 +20,10 @@ export const adminEnvSchema = z.object({
 
 export type AdminEnv = z.infer<typeof adminEnvSchema>;
 
-// Senha de exemplo do .env.example. É pública (está no repositório), então só
-// o seed de desenvolvimento pode usá-la; o provisionamento (db:admin) recusa.
-export const SENHA_PADRAO_DESENVOLVIMENTO = 'troque-esta-senha';
+// Recusa a senha que foi publicada em versões anteriores do .env.example.
+export const SENHA_PADRAO_INSEGURA = 'troque-esta-senha';
 
-export interface OpcoesLeituraAdmin {
-  // true só no seed de desenvolvimento. Padrão false: o db:admin, que é o
-  // comando usado em homologação e produção, recusa a senha de exemplo.
-  permitirSenhaPadrao?: boolean;
-}
-
-export function lerAdminEnv(
-  env: Record<string, unknown>,
-  { permitirSenhaPadrao = false }: OpcoesLeituraAdmin = {},
-): AdminEnv {
+export function lerAdminEnv(env: Record<string, unknown>): AdminEnv {
   const result = adminEnvSchema.safeParse(env);
 
   if (!result.success) {
@@ -42,12 +32,9 @@ export function lerAdminEnv(
     );
   }
 
-  if (
-    !permitirSenhaPadrao &&
-    result.data.ADMIN_SENHA === SENHA_PADRAO_DESENVOLVIMENTO
-  ) {
+  if (result.data.ADMIN_SENHA === SENHA_PADRAO_INSEGURA) {
     throw new Error(
-      'ADMIN_SENHA ainda está com o valor de exemplo do .env.example, que é público. Defina uma senha própria antes de criar o administrador.',
+      'ADMIN_SENHA usa uma senha pública de versões anteriores. Defina uma senha própria antes de criar o administrador.',
     );
   }
 
@@ -57,10 +44,8 @@ export function lerAdminEnv(
 export type ResultadoAdmin = 'criado' | 'atualizado' | 'mantido';
 
 export interface OpcoesAdmin {
-  // true (padrão): se o e-mail já existir, regrava nome e senha e garante perfil
-  // ADMIN ativo; é o que permite trocar a senha no servidor com `db:admin`.
-  // false: mantém o usuário existente como está; usado pelo seed, para não
-  // desfazer uma senha trocada localmente.
+  // Padrão false: reexecuções mantêm o usuário existente sem trocar a senha.
+  // true: regrava nome, hash, perfil ADMIN e ativo; exige escolha explícita.
   atualizarExistente?: boolean;
   hasher?: Pick<PasswordHashService, 'hash'>;
 }
@@ -71,7 +56,7 @@ export async function criarOuAtualizarAdmin(
   prisma: Pick<PrismaClient, 'usuario'>,
   admin: AdminEnv,
   {
-    atualizarExistente = true,
+    atualizarExistente = false,
     hasher = new PasswordHashService(),
   }: OpcoesAdmin = {},
 ): Promise<ResultadoAdmin> {
