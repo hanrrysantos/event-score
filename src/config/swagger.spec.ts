@@ -125,4 +125,88 @@ describe('Swagger de eventos', () => {
     });
     expect(document.security).toBeUndefined();
   });
+
+  it.each([
+    ['/api/v1/eventos', 'get', 'listarEventos', '200'],
+    ['/api/v1/eventos', 'post', 'criarEvento', '201'],
+    ['/api/v1/eventos/ativo', 'get', 'obterEventoAtivo', '200'],
+    ['/api/v1/eventos/{eventoId}', 'get', 'obterEventoPorId', '200'],
+    ['/api/v1/eventos/{eventoId}', 'patch', 'atualizarEvento', '200'],
+    ['/api/v1/eventos/{eventoId}/ativar', 'post', 'ativarEvento', '200'],
+  ] as const)(
+    'documenta %s %s com status de sucesso e segurança Bearer',
+    (path, method, operationId, status) => {
+      const operation = document.paths[path]?.[method];
+      expect(operation).toMatchObject({
+        operationId,
+        security: [{ bearer: [] }],
+        responses: {
+          [status]: expect.any(Object),
+          '401': {
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErroPadraoDto' },
+              },
+            },
+          },
+        },
+      });
+    },
+  );
+
+  it('publica corpos e respostas das rotas conforme os DTOs do contrato', () => {
+    const resumo = { $ref: '#/components/schemas/EventoResumoDto' };
+    expect(
+      document.paths['/api/v1/eventos']?.get?.responses['200'],
+    ).toMatchObject({
+      content: {
+        'application/json': { schema: { type: 'array', items: resumo } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos']?.post).toMatchObject({
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CriarEventoDto' },
+          },
+        },
+      },
+      responses: {
+        '201': { content: { 'application/json': { schema: resumo } } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos/{eventoId}']?.patch).toMatchObject({
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/AtualizarEventoDto' },
+          },
+        },
+      },
+      responses: {
+        '200': { content: { 'application/json': { schema: resumo } } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos/{eventoId}']?.get).toMatchObject({
+      parameters: [
+        {
+          name: 'eventoId',
+          in: 'path',
+          required: true,
+          schema: { type: 'integer', minimum: 1 },
+        },
+      ],
+      responses: {
+        '200': {
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/EventoDetalheDto' },
+            },
+          },
+        },
+      },
+    });
+  });
 });

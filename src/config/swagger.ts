@@ -23,7 +23,7 @@ export function configurarSwagger(app: INestApplication): void {
     )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig, {
-    // Os DTOs precisam aparecer mesmo antes da implementação das rotas da T18.
+    // Mantém disponíveis também os schemas usados nas respostas de erro.
     extraModels: [
       CriarEventoDto,
       AtualizarEventoDto,
