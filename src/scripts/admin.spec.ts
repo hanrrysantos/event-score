@@ -3,7 +3,7 @@ import {
   criarOuAtualizarAdmin,
   lerAdminEnv,
   PERFIL_ADMIN,
-  SENHA_PADRAO_DESENVOLVIMENTO,
+  SENHA_PADRAO_INSEGURA,
 } from './admin.js';
 
 const envValido = {
@@ -32,30 +32,21 @@ describe('lerAdminEnv', () => {
   });
 });
 
-describe('senha de exemplo do .env.example', () => {
+describe('senha inicial segura', () => {
   const envComSenhaPadrao = {
     ...envValido,
-    ADMIN_SENHA: SENHA_PADRAO_DESENVOLVIMENTO,
+    ADMIN_SENHA: SENHA_PADRAO_INSEGURA,
   };
 
-  it('é recusada por padrão, que é o caso do db:admin usado em produção', () => {
+  it('recusa a antiga senha pública no seed e no db:admin', () => {
     expect(() => lerAdminEnv(envComSenhaPadrao)).toThrow(
-      /valor de exemplo do \.env\.example/,
+      /senha pública de versões anteriores/,
     );
   });
 
-  it('é aceita só quando o seed de desenvolvimento permite', () => {
-    expect(
-      lerAdminEnv(envComSenhaPadrao, { permitirSenhaPadrao: true }).ADMIN_SENHA,
-    ).toBe(SENHA_PADRAO_DESENVOLVIMENTO);
-  });
-
-  it('é a mesma do .env.example, para a recusa não ficar desatualizada', () => {
+  it('não publica uma senha funcional no .env.example', () => {
     const envExample = readFileSync('.env.example', 'utf8');
-
-    expect(envExample).toMatch(
-      new RegExp(`^ADMIN_SENHA=${SENHA_PADRAO_DESENVOLVIMENTO}$`, 'm'),
-    );
+    expect(envExample).not.toMatch(/^ADMIN_SENHA=/m);
   });
 });
 
@@ -104,6 +95,7 @@ describe('criarOuAtualizarAdmin', () => {
     const prisma = prismaFalso({ id: 7 });
 
     const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
+      atualizarExistente: true,
       hasher,
     });
 
@@ -120,12 +112,11 @@ describe('criarOuAtualizarAdmin', () => {
     expect(prisma.usuario.create).not.toHaveBeenCalled();
   });
 
-  it('mantém o administrador existente sem regravar a senha quando atualizarExistente é false', async () => {
+  it('mantém o administrador existente sem regravar a senha por padrão', async () => {
     const prisma = prismaFalso({ id: 7 });
     hasher.hash.mockClear();
 
     const resultado = await criarOuAtualizarAdmin(prisma as never, admin, {
-      atualizarExistente: false,
       hasher,
     });
 
