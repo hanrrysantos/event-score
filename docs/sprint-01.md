@@ -41,9 +41,9 @@ Implementadas em `src/modules/grupos/grupos.service.ts`:
 |---|---|
 | `list(eventId)` | valida evento existente (404) e lista com contagem de participantes |
 | `findById(eventId, groupId)` | valida isolamento por evento (404) |
-| `create(eventId, dto)` | valida evento e mapeia duplicidade (`P2002` → 409) |
-| `update(eventId, groupId, dto)` | valida vínculo e mapeia bloqueio pós-resultado (`P2003` → 409) |
-| `remove(eventId, groupId)` | recusa exclusão com participantes (409) e mapeia bloqueio (`P2003` → 409) |
+| `create(eventId, dto)` | valida evento; duplicidade (`P2002`) vira 409 no filtro global |
+| `update(eventId, groupId, dto)` | valida vínculo; bloqueio pós-resultado (`P2003`) vira 409 no filtro global |
+| `remove(eventId, groupId)` | recusa exclusão com participantes (409); bloqueio pós-resultado no filtro global |
 
 Decisões registradas em [`docs/adr/0002-bloqueio-grupos-apos-resultado.md`](adr/0002-bloqueio-grupos-apos-resultado.md).
 
@@ -58,7 +58,7 @@ Decisões registradas em [`docs/adr/0002-bloqueio-grupos-apos-resultado.md`](adr
 
 | Arquivo | Cobertura |
 |---|---|
-| `grupos.service.spec.ts` | regras de 404/409, mapeamento `P2002`/`P2003`, fluxos de list/create/update/remove |
+| `grupos.service.spec.ts` | regras de 404/409 e fluxos de list/create/update/remove |
 | `dto/criar-grupo.dto.spec.ts` | validação dos campos `nome` e `cor` (contrato) |
 | `grupos.module.spec.ts` | wiring do módulo sem acesso ao banco |
 
@@ -89,18 +89,24 @@ deixou de ser skeleton e agora usa o `GruposService`.
 
 | Arquivo | Tipo | Cobertura |
 |---|---|---|
-| `grupos.service.spec.ts` | unitário | regras 404/409, `P2002`/`P2003`, mapeamento do resumo |
+| `grupos.service.spec.ts` | unitário | regras 404/409 e mapeamento do resumo |
 | `dto/criar-grupo.dto.spec.ts` | unitário | validação `nome`/`cor` |
 | `grupos.module.spec.ts` | unitário | wiring sem banco |
-| `test/grupos.e2e-spec.ts` | e2e | 200, 201, 204, 400 (payload e id), 404, 409 |
+| `test/grupos-persistencia.e2e-spec.ts` | integração (banco real) | criar/listar/consultar/atualizar/excluir, 404, isolamento, 409 |
+| `test/grupos-acesso.e2e-spec.ts` | e2e HTTP | 401 (guard), fluxo CRUD, 400, 404, 409 (duplicidade) |
+
+### Adaptação à T15 e T09 (após merge do guard)
+
+- O `401` passou a ser aplicado pelo guard global (`JwtAuthGuard` via `APP_GUARD`):
+  o controller declara `@ApiBearerAuth()` e `@ApiUnauthorizedResponse`, sem
+  `@UseGuards` explícito.
+- O mapeamento de erros do Prisma (`P2002`/`P2003`, incluindo o bloqueio RF03)
+  saiu do `GruposService` e ficou centralizado no `HttpExceptionFilter` (T09).
 
 ---
 
 ## Pendências
 
-- **401 (guard)** — depende da US03 / T14 (JWT e guard). O controller já declara
-  `@ApiBearerAuth()`, mas ainda não há guard aplicado.
-- **T09 (tratamento de erros)** — pode evoluir o mapeamento `P2002`/`P2003` para
-  um filtro global de exceções.
 - **#201 Grupos** — história do Taiga que fecha a US05 com o front-end (revisão do
-  contrato e integração).
+  contrato e integração da tela).
+- **Revisão e merge** — abrir PR para a `main` e aprovação do revisor (Ikki).

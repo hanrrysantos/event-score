@@ -22,23 +22,24 @@ Ficaram em aberto duas decisões de backend:
 1. **O banco é a fonte de verdade.** O backend não replica a verificação manual do
    bloqueio; ele mapeia o erro do Postgres para a resposta HTTP.
 2. **Mapeamento do bloqueio.** O trigger usa `restrict_violation` (SQLSTATE `23001`),
-   que o Prisma devolve como `P2003` (mesmo código de FK inexistente). O
-   `GruposService` converte `P2003` em `ConflictException` (409) com a mensagem
-   prevista no contrato.
+   que o Prisma devolve como `P2003` (mesmo código de FK inexistente). O filtro
+   global de exceções (`HttpExceptionFilter`, T09) converte `P2003` em `409`,
+   identificando o bloqueio RF03 pelo nome do trigger/função na mensagem do erro.
 3. **Exclusão de grupo com participantes.** Recusar com `409`, sem `CASCADE`,
-   conforme o contrato e o ponto #3 da seção 6 do plano de entregas. O banco já
-   recusa pela FK; o serviço faz um `count` prévio em `participante` para devolver
-   uma mensagem clara antes de tentar o `DELETE`.
+   conforme o contrato e o ponto #3 da seção 6 do plano de entregas. O serviço faz
+   um `count` prévio em `participante` para devolver uma mensagem clara antes de
+   tentar o `DELETE`.
 4. **Duplicidade de nome ou cor.** A violação dos índices `ux_grupo_nome` e
-   `ux_grupo_cor` chega como `P2002` e vira `409` (conflito de cadastro).
+   `ux_grupo_cor` chega como `P2002` e vira `409` no filtro global (conflito de
+   cadastro).
 5. **Formato da cor.** A validação `#RRGGBB` fica no DTO (`class-validator`), sem
    criar `CHECK` novo no banco (ponto #7 da seção 6 do plano).
 
 ## Consequências
 
-- O endpoint `401` continua pendente até o guard de autenticação da US03 (T14);
-  os DTOs e o controller já declaram `@ApiBearerAuth()`.
-- O mapeamento `P2003`/`P2002` fica local no serviço até a T09 (tratamento de
-  erros) poder evoluí-lo para um filtro global de exceções.
+- O endpoint `401` é aplicado pelo guard global (`JwtAuthGuard` via `APP_GUARD`,
+  US03/T14 + T15); o controller declara `@ApiBearerAuth()`.
+- O mapeamento `P2003`/`P2002` fica centralizado no `HttpExceptionFilter` (T09);
+  o `GruposService` não trata erros do Prisma e deixa o filtro traduzi-los.
 - Nenhuma migração nova é necessária para a regra: o trigger da V6 permanece
   inalterado.
