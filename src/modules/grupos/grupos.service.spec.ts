@@ -1,13 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client.js';
 import { GruposService } from './grupos.service.js';
-
-function prismaError(code: string): Prisma.PrismaClientKnownRequestError {
-  return new Prisma.PrismaClientKnownRequestError('erro de teste', {
-    code,
-    clientVersion: 'test',
-  });
-}
 
 describe('GruposService', () => {
   const EVENT_ID = 1;
@@ -110,16 +102,6 @@ describe('GruposService', () => {
     expect(result).toEqual({ ...summary, quantidadeParticipantes: 0 });
   });
 
-  it('mapeia unicidade violada (P2002) para 409 ao criar', async () => {
-    const { service, prisma } = setup();
-    prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
-    prisma.grupo.create.mockRejectedValue(prismaError('P2002'));
-
-    await expect(
-      service.create(EVENT_ID, { nome: 'Alfa', cor: '#FF5733' }),
-    ).rejects.toBeInstanceOf(ConflictException);
-  });
-
   it('atualiza um grupo que pertence ao evento', async () => {
     const { service, prisma } = setup();
     const dto = { nome: 'Alfa Prime' };
@@ -137,16 +119,6 @@ describe('GruposService', () => {
       include: { _count: { select: { participantes: true } } },
     });
     expect(result).toEqual({ ...summary, nome: 'Alfa Prime' });
-  });
-
-  it('mapeia bloqueio pós-resultado (P2003) para 409 ao atualizar', async () => {
-    const { service, prisma } = setup();
-    prisma.grupo.findUnique.mockResolvedValue({ id: GROUP_ID });
-    prisma.grupo.update.mockRejectedValue(prismaError('P2003'));
-
-    await expect(
-      service.update(EVENT_ID, GROUP_ID, { nome: 'Alfa Prime' }),
-    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('recusa excluir grupo com participantes vinculados (409)', async () => {
@@ -171,16 +143,5 @@ describe('GruposService', () => {
     expect(prisma.grupo.delete).toHaveBeenCalledWith({
       where: { id_eventoId: { id: GROUP_ID, eventoId: EVENT_ID } },
     });
-  });
-
-  it('mapeia bloqueio pós-resultado (P2003) para 409 ao excluir', async () => {
-    const { service, prisma } = setup();
-    prisma.grupo.findUnique.mockResolvedValue({ id: GROUP_ID });
-    prisma.participante.count.mockResolvedValue(0);
-    prisma.grupo.delete.mockRejectedValue(prismaError('P2003'));
-
-    await expect(service.remove(EVENT_ID, GROUP_ID)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
   });
 });

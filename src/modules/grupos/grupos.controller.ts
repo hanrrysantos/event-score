@@ -20,6 +20,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErroPadraoDto } from '../../common/dto/erro-padrao.dto.js';
 import { AtualizarGrupoDto } from './dto/atualizar-grupo.dto.js';
@@ -29,6 +30,10 @@ import { GruposService } from './grupos.service.js';
 
 @ApiTags('Grupos')
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({
+  description: 'Token ausente, inválido ou expirado.',
+  type: ErroPadraoDto,
+})
 @ApiParam({
   name: 'eventoId',
   description: 'Identificador numérico único do evento.',

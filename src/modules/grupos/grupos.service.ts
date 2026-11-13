@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { AtualizarGrupoDto } from './dto/atualizar-grupo.dto.js';
 import type { CriarGrupoDto } from './dto/criar-grupo.dto.js';
@@ -51,16 +50,12 @@ export class GruposService {
   async create(eventId: number, dto: CriarGrupoDto): Promise<GrupoResumoDto> {
     await this.assertEventExists(eventId);
 
-    try {
-      const group = await this.prisma.grupo.create({
-        data: { eventoId: eventId, nome: dto.nome, cor: dto.cor },
-        include: PARTICIPANTS_INCLUDED,
-      });
+    const group = await this.prisma.grupo.create({
+      data: { eventoId: eventId, nome: dto.nome, cor: dto.cor },
+      include: PARTICIPANTS_INCLUDED,
+    });
 
-      return this.toSummary(group);
-    } catch (error) {
-      this.mapGroupError(error);
-    }
+    return this.toSummary(group);
   }
 
   async update(
@@ -70,17 +65,13 @@ export class GruposService {
   ): Promise<GrupoResumoDto> {
     await this.assertGroupInEvent(eventId, groupId);
 
-    try {
-      const group = await this.prisma.grupo.update({
-        where: { id_eventoId: { id: groupId, eventoId: eventId } },
-        data: dto,
-        include: PARTICIPANTS_INCLUDED,
-      });
+    const group = await this.prisma.grupo.update({
+      where: { id_eventoId: { id: groupId, eventoId: eventId } },
+      data: dto,
+      include: PARTICIPANTS_INCLUDED,
+    });
 
-      return this.toSummary(group);
-    } catch (error) {
-      this.mapGroupError(error);
-    }
+    return this.toSummary(group);
   }
 
   async remove(eventId: number, groupId: number): Promise<void> {
@@ -95,13 +86,9 @@ export class GruposService {
       );
     }
 
-    try {
-      await this.prisma.grupo.delete({
-        where: { id_eventoId: { id: groupId, eventoId: eventId } },
-      });
-    } catch (error) {
-      this.mapGroupError(error);
-    }
+    await this.prisma.grupo.delete({
+      where: { id_eventoId: { id: groupId, eventoId: eventId } },
+    });
   }
 
   private toSummary(group: GroupWithCount): GrupoResumoDto {
@@ -139,24 +126,5 @@ export class GruposService {
 
     await this.assertEventExists(eventId);
     throw new NotFoundException('Grupo não encontrado neste evento');
-  }
-
-  // Os triggers do banco (V6) usam restrict_violation, que o Prisma expõe como
-  // P2003; a violação de unicidade de nome/cor chega como P2002.
-  private mapGroupError(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        throw new ConflictException(
-          'Já existe um grupo com esse nome ou cor neste evento',
-        );
-      }
-      if (error.code === 'P2003') {
-        throw new ConflictException(
-          'Não é permitido alterar grupos de um evento que já possui resultados lançados (RF03)',
-        );
-      }
-    }
-
-    throw error;
   }
 }
