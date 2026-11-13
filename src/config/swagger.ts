@@ -9,6 +9,12 @@ import { EventoResumoDto } from '../modules/eventos/dto/evento-resumo.dto.js';
 import { AtualizarGrupoDto } from '../modules/grupos/dto/atualizar-grupo.dto.js';
 import { CriarGrupoDto } from '../modules/grupos/dto/criar-grupo.dto.js';
 import { GrupoResumoDto } from '../modules/grupos/dto/grupo-resumo.dto.js';
+import {
+  ImportacaoConfirmadaDto,
+  ImportacaoErroDto,
+  ImportacaoPrevistaDto,
+} from '../modules/participantes/dto/importacao.dto.js';
+import { ParticipanteResumoDto } from '../modules/participantes/dto/participante-resumo.dto.js';
 
 export function configurarSwagger(app: INestApplication): void {
   const swaggerConfig = new DocumentBuilder()
@@ -35,6 +41,10 @@ export function configurarSwagger(app: INestApplication): void {
       CriarGrupoDto,
       AtualizarGrupoDto,
       GrupoResumoDto,
+      ParticipanteResumoDto,
+      ImportacaoPrevistaDto,
+      ImportacaoErroDto,
+      ImportacaoConfirmadaDto,
       ErroPadraoDto,
       ErroValidacaoDto,
     ],
