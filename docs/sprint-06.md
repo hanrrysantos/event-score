@@ -1,6 +1,6 @@
-# Sprint 01 — Registro de implementação
+# Sprint 06 — Registro de implementação
 
-Registro do que foi implementado no backend durante a Sprint 01. Este documento é
+Registro do que foi implementado no backend durante a Sprint 06. Este documento é
 atualizado a cada onda entregue; as tarefas seguem a numeração do Taiga.
 
 - **Período:** 05 a 15/11/2026 · Homologação em 16/11/2026
