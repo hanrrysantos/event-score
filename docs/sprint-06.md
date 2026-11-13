@@ -105,8 +105,52 @@ deixou de ser skeleton e agora usa o `GruposService`.
 
 ---
 
+## Onda 3 — #203 Participantes (RF04)
+
+Módulo de participantes com listagem paginada e importação em duas etapas
+(prévia e confirmação) a partir de arquivo CSV.
+
+### Fluxo de importação (RF04)
+
+| Método | Rota | Status | Descrição |
+|---|---|---|---|
+| `GET` | `/eventos/{eventoId}/participantes` | 200 | listagem (envelope `dados`/`paginacao`/`resumo`) |
+| `POST` | `/eventos/{eventoId}/participantes/importacao` | 200 | prévia (não persiste): `totalLinhas`, `validas`, `invalidas`, `erros` |
+| `POST` | `/eventos/{eventoId}/participantes/importacao/confirmar` | 201 | persiste as linhas válidas |
+
+- Arquivo CSV com cabeçalho `nome,matricula,turma,grupo`; `grupo` é o **nome** do
+  grupo (validado contra os grupos do evento).
+- Validações por linha: `nome` (obrigatório, ≤150), `matricula` (obrigatória,
+  ≤20, única por evento e no arquivo), `turma` (obrigatória, ≤10), `grupo`
+  (obrigatório e existente no evento).
+- Parsing com `csv-parse` (dependência nova).
+- Upload via `FileInterceptor` (multer) e persistência em transação.
+
+### Arquivos
+
+| Arquivo | Conteúdo |
+|---|---|
+| `src/modules/participantes/participantes.module.ts` | `ParticipantesModule` |
+| `src/modules/participantes/participantes.controller.ts` | rotas de listagem e importação |
+| `src/modules/participantes/participantes.service.ts` | regras, `parseCsv` e `validateRows` |
+| `src/modules/participantes/dto/participante-resumo.dto.ts` | `ParticipanteResumoDto` |
+| `src/modules/participantes/dto/importacao.dto.ts` | prévia, confirmação e erro por linha |
+
+### Testes
+
+| Arquivo | Tipo | Cobertura |
+|---|---|---|
+| `participantes.service.spec.ts` | unitário | listagem, prévia, validações, confirmação |
+| `participantes.module.spec.ts` | unitário | wiring sem banco |
+| `test/participantes-persistencia.e2e-spec.ts` | integração | listar/importar, duplicidade, grupo inexistente |
+| `test/participantes-acesso.e2e-spec.ts` | e2e HTTP | 401, upload multipart, 400, 404 |
+
+---
+
 ## Pendências
 
 - **#201 Grupos** — história do Taiga que fecha a US05 com o front-end (revisão do
   contrato e integração da tela).
+- **#203 Participantes** — história do Taiga; contrato OpenAPI v0.2 ainda não
+  publicado (rotas definidas provisoriamente aqui).
 - **Revisão e merge** — abrir PR para a `main` e aprovação do revisor (Ikki).
