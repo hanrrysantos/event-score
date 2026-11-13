@@ -316,7 +316,6 @@ model CriterioDesempate {
   ordem     Int
   descricao String @db.VarChar(255)
   tipo      String @db.VarChar(30)
-  sentido   String @default("DESC") @db.VarChar(4)
   desafioId Int?   @map("id_desafio")
 
   evento            Evento             @relation(fields: [eventoId], references: [id], onUpdate: NoAction)

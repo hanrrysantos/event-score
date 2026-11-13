@@ -18,7 +18,10 @@ describe('AuthService', () => {
   };
 
   function setup(user: AuthUser | null = admin) {
-    const repository = { findByEmail: vi.fn(async (_email: string) => user) };
+    const repository = {
+      findByEmail: vi.fn(async (_email: string) => user),
+      findById: vi.fn(),
+    };
     const passwordHash = new PasswordHashService();
     const verify = vi.spyOn(passwordHash, 'verify').mockResolvedValue(true);
     const service = new AuthService(repository, passwordHash);
@@ -86,4 +89,30 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(repository.findByEmail).not.toHaveBeenCalled();
   });
+
+  it('retorna somente os dados públicos do administrador atual', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue(admin);
+
+    const result = await service.getCurrentUser(admin.id);
+
+    expect(repository.findById).toHaveBeenCalledWith(admin.id);
+    expect(result).toEqual({
+      id: admin.id,
+      nome: admin.nome,
+      email: admin.email,
+    });
+    expect(result).not.toHaveProperty('senhaHash');
+  });
+
+  it.each([null, { ...admin, ativo: false }, { ...admin, perfil: 'OPERADOR' }])(
+    'rejeita conta indisponível ao consultar o administrador atual: %o',
+    async (user) => {
+      const { service, repository } = setup();
+      repository.findById.mockResolvedValue(user);
+      await expect(service.getCurrentUser(admin.id)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    },
+  );
 });

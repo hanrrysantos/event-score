@@ -1,4 +1,4 @@
-import { validateEnv } from './env.js';
+import { validateAppEnv, validateEnv } from './env.js';
 
 describe('validateEnv', () => {
   const validEnv = {
@@ -36,5 +36,21 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(
       /NODE_ENV/,
     );
+  });
+
+  it('should reject a short JWT secret when one is configured', () => {
+    expect(() => validateEnv({ ...validEnv, JWT_SECRET: 'curto' })).toThrow(
+      /JWT_SECRET/,
+    );
+  });
+
+  it('requires a strong JWT secret to start the API', () => {
+    expect(() => validateAppEnv(validEnv)).toThrow(/JWT_SECRET/);
+    expect(() => validateAppEnv({ ...validEnv, JWT_SECRET: 'short' })).toThrow(
+      /JWT_SECRET/,
+    );
+    expect(
+      validateAppEnv({ ...validEnv, JWT_SECRET: 'x'.repeat(32) }).JWT_SECRET,
+    ).toBe('x'.repeat(32));
   });
 });
