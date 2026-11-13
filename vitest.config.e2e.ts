@@ -37,5 +37,8 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    // A ativação afeta todo o banco: as suítes T19/T20 não podem disputar
+    // o único evento ativo nem restaurar o estado enquanto outra testa a troca.
+    fileParallelism: false,
   },
 });
