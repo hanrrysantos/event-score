@@ -1,0 +1,248 @@
+openapi: 3.0.3
+info:
+  title: EventScore — proposta de contrato de desafios (Taiga 245)
+  version: 0.2.0-draft.t245
+  description: |
+    Recorte para revisão do cadastro de desafios (RF05/RF06).
+    NÃO é contrato aprovado nem evidência de endpoints implementados.
+    Parte do payload consumido pelo frontend no PR #30 (15f74ba) e das
+    restrições de DESAFIO/PONTOS_COLOCACAO nas migrações V4 e V12.
+    A incorporação ao OpenAPI oficial e o versionamento serão alinhados com
+    o responsável pelo contrato após aprovação explícita do frontend.
+servers:
+  - url: http://localhost:3000/api/v1
+tags:
+  - name: Desafios
+security:
+  - bearerAuth: []
+x-status: proposta-pendente-de-aprovacao
+paths:
+  /eventos/{eventoId}/desafios:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      tags: [Desafios]
+      operationId: listarDesafios
+      summary: Listar desafios do evento
+      description: |
+        Evento inexistente retorna 404; evento sem desafios retorna [].
+        Proposta de ordem estável: numeroDia do dia e, em seguida, id do desafio.
+        Cada tabela de pontos vem ordenada por colocacao crescente.
+      responses:
+        '200':
+          description: Array de desafios do evento.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DesafioDto'
+        '400':
+          $ref: '../openapi-v0.1.yaml#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoEncontrado'
+    post:
+      tags: [Desafios]
+      operationId: criarDesafio
+      summary: Criar desafio e tabela de pontos
+      description: |
+        Cria desafio e pontos na mesma transação. O dia deve pertencer ao
+        evento da URL. Exige pelo menos um grupo e uma linha para cada grupo,
+        com colocações únicas formando 1..N. Não cria resultado nem grupo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarDesafioDto'
+      responses:
+        '201':
+          $ref: '#/components/responses/DesafioRetornado'
+        '400':
+          $ref: '../openapi-v0.1.yaml#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoEncontrado'
+        '409':
+          $ref: '#/components/responses/ConflitoDesafio'
+        '422':
+          $ref: '#/components/responses/TabelaInvalida'
+  /eventos/{eventoId}/desafios/{desafioId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - $ref: '#/components/parameters/DesafioId'
+    get:
+      tags: [Desafios]
+      operationId: obterDesafioPorId
+      summary: Consultar desafio no contexto do evento
+      description: Desafio de outro evento também retorna 404.
+      responses:
+        '200':
+          $ref: '#/components/responses/DesafioRetornado'
+        '400':
+          $ref: '../openapi-v0.1.yaml#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoEncontrado'
+    patch:
+      tags: [Desafios]
+      operationId: atualizarDesafio
+      summary: Atualizar desafio parcialmente
+      description: |
+        Campos ausentes são preservados; null não é aceito. descricao vazia
+        limpa a descrição. Quando pontosColocacao é informado, substitui a
+        tabela inteira na mesma transação da atualização do desafio.
+        A tabela resultante precisa atender a regra 1..N dos grupos atuais.
+        PROPOSTA A CONFIRMAR: após resultados, alterações de dia ou tabela
+        de pontos retornam 409 para evitar recálculo sem histórico; nome e
+        descrição continuam editáveis. Ver as decisões no documento da T245.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarDesafioDto'
+      responses:
+        '200':
+          $ref: '#/components/responses/DesafioRetornado'
+        '400':
+          $ref: '../openapi-v0.1.yaml#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoEncontrado'
+        '409':
+          $ref: '#/components/responses/ConflitoDesafio'
+        '422':
+          $ref: '#/components/responses/TabelaInvalida'
+    delete:
+      tags: [Desafios]
+      operationId: excluirDesafio
+      summary: Excluir desafio sem dependências impeditivas
+      description: |
+        Remove os pontos próprios e o desafio na mesma transação. Desafio
+        usado em critério de desempate retorna 409 (ADR 0003).
+        PROPOSTA A CONFIRMAR: resultado lançado também impede a exclusão
+        com 409; não apagar resultados nem histórico em cascata.
+      responses:
+        '204':
+          description: Desafio excluído, sem corpo de resposta.
+        '400':
+          $ref: '../openapi-v0.1.yaml#/components/responses/RequisicaoInvalida'
+        '401':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoAutorizado'
+        '404':
+          $ref: '../openapi-v0.1.yaml#/components/responses/NaoEncontrado'
+        '409':
+          $ref: '#/components/responses/ConflitoDesafio'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    EventoId:
+      name: eventoId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      example: 1
+    DesafioId:
+      name: desafioId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      example: 3
+  responses:
+    DesafioRetornado:
+      description: Dados do desafio com a tabela de pontos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DesafioDto'
+    ConflitoDesafio:
+      description: |
+        Nome duplicado no mesmo dia e evento; dependência impeditiva de
+        exclusão ou alteração estrutural conforme as decisões da proposta.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi-v0.1.yaml#/components/schemas/ErroPadraoDto'
+          example: { statusCode: 409, message: O desafio está vinculado a um critério de desempate., error: Conflict }
+    TabelaInvalida:
+      description: |
+        Evento sem grupos, tabela com número de linhas diferente de N
+        ou colocações repetidas/com lacunas. N é o total de grupos do evento.
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi-v0.1.yaml#/components/schemas/ErroPadraoDto'
+          example: { statusCode: 422, message: A tabela de pontos precisa ter uma linha por grupo (6)., error: Unprocessable Entity }
+  schemas:
+    PontoColocacaoDto:
+      type: object
+      additionalProperties: false
+      required: [colocacao, pontos]
+      properties:
+        colocacao: { type: integer, minimum: 1, maximum: 2147483647, example: 1 }
+        pontos: { type: integer, minimum: 0, maximum: 2147483647, example: 100 }
+    CriarDesafioDto:
+      type: object
+      additionalProperties: false
+      required: [nome, diaId, pontosColocacao]
+      properties:
+        nome: { type: string, minLength: 1, maxLength: 100, example: Hackathon }
+        descricao:
+          type: string
+          maxLength: 255
+          default: ''
+          example: Desenvolvimento em equipe
+        diaId: { type: integer, minimum: 1, maximum: 2147483647, example: 2 }
+        pontosColocacao:
+          type: array
+          minItems: 1
+          description: Uma linha por grupo; colocações devem formar 1..N sem repetição.
+          items:
+            $ref: '#/components/schemas/PontoColocacaoDto'
+    AtualizarDesafioDto:
+      type: object
+      additionalProperties: false
+      description: Os mesmos campos da criação, todos opcionais; null é inválido.
+      properties:
+        nome: { type: string, minLength: 1, maxLength: 100, example: Hackathon }
+        descricao: { type: string, maxLength: 255, example: '' }
+        diaId: { type: integer, minimum: 1, maximum: 2147483647, example: 2 }
+        pontosColocacao:
+          type: array
+          minItems: 1
+          description: Quando presente, substitui a tabela inteira; não é um patch de itens.
+          items:
+            $ref: '#/components/schemas/PontoColocacaoDto'
+    DesafioDto:
+      type: object
+      required: [id, nome, descricao, diaId, pontosColocacao]
+      properties:
+        id: { type: integer, minimum: 1, example: 3 }
+        nome: { type: string, example: Hackathon }
+        descricao:
+          type: string
+          description: Retorna string vazia quando a coluna do banco é null.
+          example: Desenvolvimento em equipe
+        diaId: { type: integer, minimum: 1, example: 2 }
+        pontosColocacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/PontoColocacaoDto'
+      example:
+        id: 3
+        nome: Hackathon
+        descricao: Desenvolvimento em equipe
+        diaId: 2
+        pontosColocacao:
+          - { colocacao: 1, pontos: 100 }
+          - { colocacao: 2, pontos: 80 }
