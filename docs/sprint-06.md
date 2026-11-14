@@ -107,24 +107,27 @@ deixou de ser skeleton e agora usa o `GruposService`.
 
 ## Onda 3 — #203 Participantes (RF04)
 
-Módulo de participantes com listagem paginada e importação em duas etapas
-(prévia e confirmação) a partir de arquivo CSV.
+Módulo de participantes com listagem paginada (com filtros) e importação em duas
+etapas (prévia e confirmação) a partir de CSV ou XLSX, alinhado ao contrato
+front x API v0.3.
 
 ### Fluxo de importação (RF04)
 
 | Método | Rota | Status | Descrição |
 |---|---|---|---|
-| `GET` | `/eventos/{eventoId}/participantes` | 200 | listagem (envelope `dados`/`paginacao`/`resumo`) |
-| `POST` | `/eventos/{eventoId}/participantes/importacao` | 200 | prévia (não persiste): `totalLinhas`, `validas`, `invalidas`, `erros` |
-| `POST` | `/eventos/{eventoId}/participantes/importacao/confirmar` | 201 | persiste as linhas válidas |
+| `GET` | `/eventos/{eventoId}/participantes` | 200 | listagem (envelope `dados`/`paginacao`/`resumo`), filtros `?grupoId=`, `?turma=`, `?busca=` |
+| `POST` | `/eventos/{eventoId}/participantes/importacao/previa` | 200 | prévia (não persiste): `totalLinhas`, `linhasValidas`, `linhasComErro`, `linhas[]` |
+| `POST` | `/eventos/{eventoId}/participantes/importacao` | 201 | grava tudo após validação; com erro responde **422** com as linhas e não grava |
 
-- Arquivo CSV com cabeçalho `nome,matricula,turma,grupo`; `grupo` é o **nome** do
-  grupo (validado contra os grupos do evento).
-- Validações por linha: `nome` (obrigatório, ≤150), `matricula` (obrigatória,
-  ≤20, única por evento e no arquivo), `turma` (obrigatória, ≤10), `grupo`
-  (obrigatório e existente no evento).
-- Parsing com `csv-parse` (dependência nova).
-- Upload via `FileInterceptor` (multer) e persistência em transação.
+- Arquivo **CSV** (UTF-8, vírgula ou ponto e vírgula) ou **XLSX**, com colunas
+  `nome,matricula,turma,grupo`; `grupo` é o **nome** do grupo.
+- Cada linha da prévia traz `{ linha, nome, matricula, turma, grupo, status, motivoErro }`
+  com `status` `VALIDO`/`ERRO` e `motivoErro` `null` nas válidas.
+- Validações: `nome` (obrigatório, ≤150), `matricula` (obrigatória, ≤20, única por
+  evento e no arquivo), `turma` (obrigatória, ≤10), `grupo` (obrigatório e existente
+  no evento); linha em branco é erro.
+- Upload limitado a **5 MB** via `FileInterceptor` (multer).
+- Parsing com `csv-parse` e `exceljs` (dependências novas).
 
 ### Arquivos
 
@@ -132,18 +135,28 @@ Módulo de participantes com listagem paginada e importação em duas etapas
 |---|---|
 | `src/modules/participantes/participantes.module.ts` | `ParticipantesModule` |
 | `src/modules/participantes/participantes.controller.ts` | rotas de listagem e importação |
-| `src/modules/participantes/participantes.service.ts` | regras, `parseCsv` e `validateRows` |
-| `src/modules/participantes/dto/participante-resumo.dto.ts` | `ParticipanteResumoDto` |
-| `src/modules/participantes/dto/importacao.dto.ts` | prévia, confirmação e erro por linha |
+| `src/modules/participantes/participantes.service.ts` | regras, `parseCsv`/`parseXlsx` e `validateRows` |
+| `src/modules/participantes/dto/participante-resumo.dto.ts` | `ParticipanteResumoDto` (`grupo` + `grupoId`) |
+| `src/modules/participantes/dto/importacao.dto.ts` | prévia, confirmação e linha |
+| `src/modules/participantes/dto/listar-participantes-query.dto.ts` | filtros de listagem |
+
+### Ajustes após revisão
+
+- Rotas da importação seguem o contrato (`/importacao/previa` e `/importacao`).
+- Prévia com todas as linhas (`status`/`motivoErro`) e confirmação sem gravação parcial.
+- Filtros `grupoId`/`turma`/`busca`; campo `grupo` no resumo.
+- CSV com vírgula/ponto-e-vírgula e XLSX; limite de 5 MB; linha em branco vira erro.
+- Filtro global passa a preservar campos extras (ex.: `linhas` no 422) e a tratar
+  arquivo acima do limite.
 
 ### Testes
 
 | Arquivo | Tipo | Cobertura |
 |---|---|---|
-| `participantes.service.spec.ts` | unitário | listagem, prévia, validações, confirmação |
+| `participantes.service.spec.ts` | unitário | listagem/filtros, prévia, validações, confirmação/422 |
 | `participantes.module.spec.ts` | unitário | wiring sem banco |
-| `test/participantes-persistencia.e2e-spec.ts` | integração | listar/importar, duplicidade, grupo inexistente |
-| `test/participantes-acesso.e2e-spec.ts` | e2e HTTP | 401, upload multipart, 400, 404 |
+| `test/participantes-persistencia.e2e-spec.ts` | integração | listar/importar, duplicidade, grupo inexistente, 422 |
+| `test/participantes-acesso.e2e-spec.ts` | e2e HTTP | 401, upload multipart, 422, 400, 404, filtros |
 
 ---
 
@@ -151,6 +164,6 @@ Módulo de participantes com listagem paginada e importação em duas etapas
 
 - **#201 Grupos** — história do Taiga que fecha a US05 com o front-end (revisão do
   contrato e integração da tela).
-- **#203 Participantes** — história do Taiga; contrato OpenAPI v0.2 ainda não
-  publicado (rotas definidas provisoriamente aqui).
+- **#203 Participantes** — contrato OpenAPI v0.2 ainda não publicado (rotas alinhadas
+  ao contrato front v0.3, registrado acima).
 - **Revisão e merge** — abrir PR para a `main` e aprovação do revisor (Ikki).
