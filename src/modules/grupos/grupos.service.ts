@@ -49,6 +49,7 @@ export class GruposService {
 
   async create(eventId: number, dto: CriarGrupoDto): Promise<GrupoResumoDto> {
     await this.assertEventExists(eventId);
+    await this.assertNoDuplicate(eventId, dto.nome, dto.cor);
 
     const group = await this.prisma.grupo.create({
       data: { eventoId: eventId, nome: dto.nome, cor: dto.cor },
@@ -64,6 +65,7 @@ export class GruposService {
     dto: AtualizarGrupoDto,
   ): Promise<GrupoResumoDto> {
     await this.assertGroupInEvent(eventId, groupId);
+    await this.assertNoDuplicate(eventId, dto.nome, dto.cor, groupId);
 
     const group = await this.prisma.grupo.update({
       where: { id_eventoId: { id: groupId, eventoId: eventId } },
@@ -82,7 +84,7 @@ export class GruposService {
     });
     if (participantCount > 0) {
       throw new ConflictException(
-        'Não é permitido excluir grupos com participantes vinculados',
+        `O grupo tem ${participantCount} participante${participantCount === 1 ? '' : 's'}. Remova ou mova os participantes antes de excluir.`,
       );
     }
 
@@ -98,6 +100,46 @@ export class GruposService {
       cor: group.cor,
       quantidadeParticipantes: group._count.participantes,
     };
+  }
+
+  private async assertNoDuplicate(
+    eventId: number,
+    nome?: string,
+    cor?: string,
+    ignoreGroupId?: number,
+  ): Promise<void> {
+    const groups = await this.prisma.grupo.findMany({
+      where: { eventoId: eventId },
+      select: { id: true, nome: true, cor: true },
+    });
+
+    if (nome !== undefined && nome !== '') {
+      const nomeNormalizado = nome.toLowerCase();
+      const duplicado = groups.find(
+        (group) =>
+          group.nome.toLowerCase() === nomeNormalizado &&
+          group.id !== ignoreGroupId,
+      );
+      if (duplicado) {
+        throw new ConflictException(
+          `Já existe um grupo com o nome '${nome}' neste evento`,
+        );
+      }
+    }
+
+    if (cor !== undefined && cor !== '') {
+      const corNormalizada = cor.toLowerCase();
+      const duplicado = groups.find(
+        (group) =>
+          group.cor.toLowerCase() === corNormalizada &&
+          group.id !== ignoreGroupId,
+      );
+      if (duplicado) {
+        throw new ConflictException(
+          `Já existe um grupo com a cor '${cor}' neste evento`,
+        );
+      }
+    }
   }
 
   private async assertEventExists(eventId: number): Promise<void> {

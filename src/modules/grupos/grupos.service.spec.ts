@@ -88,6 +88,7 @@ describe('GruposService', () => {
     const { service, prisma } = setup();
     const dto = { nome: 'Alfa', cor: '#FF5733' };
     prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
+    prisma.grupo.findMany.mockResolvedValue([]);
     prisma.grupo.create.mockResolvedValue({
       ...groupWithCount,
       _count: { participantes: 0 },
@@ -102,10 +103,36 @@ describe('GruposService', () => {
     expect(result).toEqual({ ...summary, quantidadeParticipantes: 0 });
   });
 
+  it('recusa criar grupo com nome duplicado (409)', async () => {
+    const { service, prisma } = setup();
+    prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
+    prisma.grupo.findMany.mockResolvedValue([
+      { id: 99, nome: 'Alfa', cor: '#000000' },
+    ]);
+
+    await expect(
+      service.create(EVENT_ID, { nome: 'Alfa', cor: '#FF5733' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.grupo.create).not.toHaveBeenCalled();
+  });
+
+  it('recusa criar grupo com cor duplicada (409)', async () => {
+    const { service, prisma } = setup();
+    prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
+    prisma.grupo.findMany.mockResolvedValue([
+      { id: 99, nome: 'Outro', cor: '#FF5733' },
+    ]);
+
+    await expect(
+      service.create(EVENT_ID, { nome: 'Alfa', cor: '#FF5733' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('atualiza um grupo que pertence ao evento', async () => {
     const { service, prisma } = setup();
     const dto = { nome: 'Alfa Prime' };
     prisma.grupo.findUnique.mockResolvedValue({ id: GROUP_ID });
+    prisma.grupo.findMany.mockResolvedValue([]);
     prisma.grupo.update.mockResolvedValue({
       ...groupWithCount,
       nome: 'Alfa Prime',
@@ -121,13 +148,13 @@ describe('GruposService', () => {
     expect(result).toEqual({ ...summary, nome: 'Alfa Prime' });
   });
 
-  it('recusa excluir grupo com participantes vinculados (409)', async () => {
+  it('recusa excluir grupo com participantes vinculados informando a quantidade', async () => {
     const { service, prisma } = setup();
     prisma.grupo.findUnique.mockResolvedValue({ id: GROUP_ID });
     prisma.participante.count.mockResolvedValue(2);
 
-    await expect(service.remove(EVENT_ID, GROUP_ID)).rejects.toBeInstanceOf(
-      ConflictException,
+    await expect(service.remove(EVENT_ID, GROUP_ID)).rejects.toThrow(
+      'O grupo tem 2 participantes. Remova ou mova os participantes antes de excluir.',
     );
     expect(prisma.grupo.delete).not.toHaveBeenCalled();
   });
