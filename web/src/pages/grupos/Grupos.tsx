@@ -10,6 +10,10 @@ type Grupo = Schemas['GrupoResumoDto'];
 // Paleta do mock; "Outra cor" abre o seletor nativo, porque a quantidade de grupos é livre e a cor é única no evento.
 const PALETA = ['#C0392B', '#1D4ED8', '#15803D', '#B7791F', '#6B46C1', '#18181B'];
 
+const corUsada = (grupos: Grupo[], cor: string) => grupos.some((g) => g.cor.toUpperCase() === cor.toUpperCase());
+/** Primeira cor da paleta ainda livre no evento; com a paleta toda usada, um cinza para a pessoa trocar. */
+const corLivre = (grupos: Grupo[]) => PALETA.find((c) => !corUsada(grupos, c)) ?? '#808080';
+
 // Texto preto em cores claras, branco nas escuras.
 const corDoTexto = (hex: string) => {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -33,9 +37,7 @@ export default function Grupos() {
     api<Grupo[]>(`${base}/grupos`)
       .then((lista) => {
         setGrupos(lista);
-        // Sugere a primeira cor da paleta ainda livre.
-        const usadas = new Set(lista.map((g) => g.cor.toUpperCase()));
-        setCor((atual) => (usadas.has(atual) ? (PALETA.find((c) => !usadas.has(c)) ?? '#808080') : atual));
+        setCor((atual) => (corUsada(lista, atual) ? corLivre(lista) : atual));
       })
       .catch((e: Error) => setErro(e.message));
     // RF03: com resultado lançado, grupos não podem mais ser criados, editados nem excluídos.
@@ -61,7 +63,8 @@ export default function Grupos() {
   function limpar() {
     setEditando(undefined);
     setNome('');
-    setCor(PALETA.find((c) => !usadas.has(c)) ?? PALETA[0]);
+    // Conta todos os grupos, inclusive o que estava em edição: a cor dele continua em uso.
+    setCor(corLivre(grupos ?? []));
   }
 
   function editar(grupo: Grupo) {

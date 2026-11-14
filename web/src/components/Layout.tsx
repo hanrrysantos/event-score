@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useOutletContext } from 'react-router';
-import { api, token, type Schemas } from '../api/client';
+import { api, ApiError, token, type Schemas } from '../api/client';
 
 const ABAS = [
   ['/evento', 'Evento'],
@@ -24,11 +24,21 @@ export default function Layout() {
   const [usuario, setUsuario] = useState<string>();
   const logado = Boolean(token.ler());
 
+  const [erroEvento, setErroEvento] = useState('');
+
   const recarregarEventoAtivo = useCallback(() => {
-    // 404 = nenhum evento ativo.
     api<Evento>('/eventos/ativo')
-      .then(setEventoAtivo)
-      .catch(() => setEventoAtivo(null));
+      .then((evento) => {
+        setEventoAtivo(evento);
+        setErroEvento('');
+      })
+      .catch((e: Error) => {
+        // Só o 404 significa "nenhum evento ativo"; queda de conexão ou erro do servidor não pode virar isso.
+        if (e instanceof ApiError && e.status === 404) {
+          setEventoAtivo(null);
+          setErroEvento('');
+        } else setErroEvento(e.message);
+      });
   }, []);
 
   useEffect(() => {
@@ -61,6 +71,14 @@ export default function Layout() {
           Sair
         </button>
       </nav>
+      {erroEvento && (
+        <div className="cartao pendentes" role="alert">
+          <span>Não foi possível carregar o evento ativo: {erroEvento}</span>
+          <button type="button" className="btn" onClick={recarregarEventoAtivo}>
+            Tentar de novo
+          </button>
+        </div>
+      )}
       <Outlet context={{ eventoAtivo, recarregarEventoAtivo } satisfies ContextoLayout} />
     </div>
   );
