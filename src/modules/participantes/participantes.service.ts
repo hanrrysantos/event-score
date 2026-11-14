@@ -1,17 +1,22 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { parse } from 'csv-parse/sync';
-import type { PaginacaoQueryDto } from '../../common/dto/paginacao-query.dto.js';
+import { Workbook } from 'exceljs';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type {
   ImportacaoConfirmadaDto,
-  ImportacaoErroDto,
+  ImportacaoLinhaDto,
   ImportacaoPrevistaDto,
 } from './dto/importacao.dto.js';
+import type { ListarParticipantesQueryDto } from './dto/listar-participantes-query.dto.js';
 import type { ParticipanteResumoDto } from './dto/participante-resumo.dto.js';
+
+const MIMETYPE_XLSX =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 interface Row {
   nome: string;
@@ -22,6 +27,12 @@ interface Row {
 
 interface ValidRow extends Row {
   grupoId: number;
+}
+
+interface ImportFile {
+  buffer: Buffer;
+  mimetype?: string;
+  originalname?: string;
 }
 
 interface ParticipantWithGroup {
@@ -36,11 +47,24 @@ interface ParticipantWithGroup {
 export class ParticipantesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(eventId: number, query: PaginacaoQueryDto) {
+  async list(eventId: number, query: ListarParticipantesQueryDto) {
     await this.assertEventExists(eventId);
 
-    const where = { eventoId: eventId };
-    const { pagina, tamanho } = query;
+    const { pagina, tamanho, grupoId, turma, busca } = query;
+
+    const where: Prisma.ParticipanteWhereInput = { eventoId: eventId };
+    if (grupoId !== undefined) {
+      where.grupoId = grupoId;
+    }
+    if (turma !== undefined && turma !== '') {
+      where.turma = turma;
+    }
+    if (busca !== undefined && busca !== '') {
+      where.OR = [
+        { nome: { contains: busca, mode: 'insensitive' } },
+        { matricula: { contains: busca, mode: 'insensitive' } },
+      ];
+    }
 
     const [total, participants] = await Promise.all([
       this.prisma.participante.count({ where }),
@@ -67,32 +91,42 @@ export class ParticipantesService {
 
   async previewImport(
     eventId: number,
-    buffer: Buffer,
+    file: ImportFile,
   ): Promise<ImportacaoPrevistaDto> {
     await this.assertEventExists(eventId);
 
-    const rows = this.parseCsv(buffer);
-    const { valid, errors } = await this.validateRows(eventId, rows);
+    const rows = await this.parseFile(file);
+    const { lines, linhasValidas, linhasComErro } = await this.validateRows(
+      eventId,
+      rows,
+    );
 
     return {
       totalLinhas: rows.length,
-      validas: valid.length,
-      invalidas: rows.length - valid.length,
-      erros: errors,
+      linhasValidas,
+      linhasComErro,
+      linhas: lines,
     };
   }
 
   async confirmImport(
     eventId: number,
-    buffer: Buffer,
+    file: ImportFile,
   ): Promise<ImportacaoConfirmadaDto> {
     await this.assertEventExists(eventId);
 
-    const rows = this.parseCsv(buffer);
-    const { valid } = await this.validateRows(eventId, rows);
+    const rows = await this.parseFile(file);
+    const { valid, lines, linhasValidas, linhasComErro } =
+      await this.validateRows(eventId, rows);
 
-    if (valid.length === 0) {
-      throw new BadRequestException('Nenhuma linha válida para importar');
+    if (linhasComErro > 0) {
+      throw new UnprocessableEntityException({
+        message: 'Existem linhas com erro na importação',
+        totalLinhas: rows.length,
+        linhasValidas,
+        linhasComErro,
+        linhas: lines,
+      });
     }
 
     const created = await this.prisma.$transaction(
@@ -116,12 +150,28 @@ export class ParticipantesService {
     };
   }
 
+  private async parseFile(file: ImportFile): Promise<Row[]> {
+    if (this.isXlsx(file)) {
+      return this.parseXlsx(file.buffer);
+    }
+    return this.parseCsv(file.buffer);
+  }
+
+  private isXlsx(file: ImportFile): boolean {
+    return (
+      file.mimetype === MIMETYPE_XLSX ||
+      file.originalname?.toLowerCase().endsWith('.xlsx') === true
+    );
+  }
+
   private parseCsv(buffer: Buffer): Row[] {
     const csv = buffer.toString('utf-8').replace(/^\uFEFF/, '');
     const records = parse(csv, {
       columns: true,
-      skip_empty_lines: true,
+      delimiter: [';', ','],
       trim: true,
+      skip_empty_lines: false,
+      relax_column_count: true,
     }) as Record<string, string | undefined>[];
 
     return records.map((record) => ({
@@ -132,10 +182,57 @@ export class ParticipantesService {
     }));
   }
 
+  private async parseXlsx(buffer: Buffer): Promise<Row[]> {
+    const workbook = new Workbook();
+    await workbook.xlsx.load(buffer as never);
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      return [];
+    }
+
+    const rows: Row[] = [];
+    worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      if (rowNumber === 1) {
+        return;
+      }
+      const values = row.values as unknown[];
+      rows.push({
+        nome: this.cellToString(values[1]),
+        matricula: this.cellToString(values[2]),
+        turma: this.cellToString(values[3]),
+        grupo: this.cellToString(values[4]),
+      });
+    });
+
+    return rows;
+  }
+
+  private cellToString(value: unknown): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+    return '';
+  }
+
   private async validateRows(
     eventId: number,
     rows: Row[],
-  ): Promise<{ valid: ValidRow[]; errors: ImportacaoErroDto[] }> {
+  ): Promise<{
+    valid: ValidRow[];
+    lines: ImportacaoLinhaDto[];
+    linhasValidas: number;
+    linhasComErro: number;
+  }> {
     const groups = await this.prisma.grupo.findMany({
       where: { eventoId: eventId },
       select: { id: true, nome: true },
@@ -154,8 +251,10 @@ export class ParticipantesService {
     );
 
     const valid: ValidRow[] = [];
-    const errors: ImportacaoErroDto[] = [];
+    const lines: ImportacaoLinhaDto[] = [];
     const seenMatriculas = new Set<string>();
+    let linhasValidas = 0;
+    let linhasComErro = 0;
 
     rows.forEach((row, index) => {
       const lineNumber = index + 2;
@@ -166,50 +265,75 @@ export class ParticipantesService {
       const turma = row.turma.trim();
       const grupo = row.grupo.trim();
 
-      if (!nome) {
-        problems.push('nome é obrigatório');
-      } else if (nome.length > 150) {
-        problems.push('nome excede 150 caracteres');
-      }
-
-      if (!matricula) {
-        problems.push('matricula é obrigatória');
-      } else if (matricula.length > 20) {
-        problems.push('matricula excede 20 caracteres');
-      }
-
-      if (!turma) {
-        problems.push('turma é obrigatória');
-      } else if (turma.length > 10) {
-        problems.push('turma excede 10 caracteres');
-      }
+      const isBlank = !nome && !matricula && !turma && !grupo;
 
       let grupoId: number | undefined;
-      if (!grupo) {
-        problems.push('grupo é obrigatório');
+      if (isBlank) {
+        problems.push('linha em branco');
       } else {
-        grupoId = groupIdByName.get(grupo.toLowerCase());
-        if (grupoId === undefined) {
-          problems.push(`grupo '${grupo}' não pertence ao evento`);
+        if (!nome) {
+          problems.push('nome é obrigatório');
+        } else if (nome.length > 150) {
+          problems.push('nome excede 150 caracteres');
         }
-      }
 
-      if (matricula) {
-        const key = matricula.toLowerCase();
-        if (seenMatriculas.has(key)) {
-          problems.push(`matricula '${matricula}' duplicada no arquivo`);
-        } else if (existingMatriculas.has(key)) {
-          problems.push(`matricula '${matricula}' já cadastrada neste evento`);
+        if (!matricula) {
+          problems.push('matricula é obrigatória');
+        } else if (matricula.length > 20) {
+          problems.push('matricula excede 20 caracteres');
+        }
+
+        if (!turma) {
+          problems.push('turma é obrigatória');
+        } else if (turma.length > 10) {
+          problems.push('turma excede 10 caracteres');
+        }
+
+        if (!grupo) {
+          problems.push('grupo é obrigatório');
         } else {
-          seenMatriculas.add(key);
+          grupoId = groupIdByName.get(grupo.toLowerCase());
+          if (grupoId === undefined) {
+            problems.push(`grupo '${grupo}' não pertence ao evento`);
+          }
+        }
+
+        if (matricula) {
+          const key = matricula.toLowerCase();
+          if (seenMatriculas.has(key)) {
+            problems.push(`matricula '${matricula}' duplicada no arquivo`);
+          } else if (existingMatriculas.has(key)) {
+            problems.push(
+              `matricula '${matricula}' já cadastrada neste evento`,
+            );
+          } else {
+            seenMatriculas.add(key);
+          }
         }
       }
 
       if (problems.length > 0) {
-        for (const problem of problems) {
-          errors.push({ linha: lineNumber, problema: problem });
-        }
+        linhasComErro += 1;
+        lines.push({
+          linha: lineNumber,
+          nome,
+          matricula,
+          turma,
+          grupo,
+          status: 'ERRO',
+          motivoErro: problems.join('; '),
+        });
       } else {
+        linhasValidas += 1;
+        lines.push({
+          linha: lineNumber,
+          nome,
+          matricula,
+          turma,
+          grupo,
+          status: 'VALIDO',
+          motivoErro: null,
+        });
         valid.push({
           nome,
           matricula,
@@ -220,7 +344,7 @@ export class ParticipantesService {
       }
     });
 
-    return { valid, errors };
+    return { valid, lines, linhasValidas, linhasComErro };
   }
 
   private toSummary(participant: ParticipantWithGroup): ParticipanteResumoDto {
@@ -230,7 +354,7 @@ export class ParticipantesService {
       matricula: participant.matricula,
       turma: participant.turma,
       grupoId: participant.grupo.id,
-      grupoNome: participant.grupo.nome,
+      grupo: participant.grupo.nome,
     };
   }
 

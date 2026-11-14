@@ -6,10 +6,10 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 
 const PREFIXO = `US05 ${randomUUID()}`;
 
-function csv(rows: string[][]): Buffer {
+function csvFile(rows: string[][]): { buffer: Buffer } {
   const header = 'nome,matricula,turma,grupo';
   const lines = rows.map((row) => row.join(','));
-  return Buffer.from([header, ...lines].join('\n'), 'utf-8');
+  return { buffer: Buffer.from([header, ...lines].join('\n'), 'utf-8') };
 }
 
 describe('Persistência de participantes (integração)', () => {
@@ -57,18 +57,18 @@ describe('Persistência de participantes (integração)', () => {
   });
 
   it('pré-visualiza e importa participantes válidos', async () => {
-    const file = csv([
+    const file = csvFile([
       ['João', '2023001', 'A1', 'Alfa'],
       ['Maria', '2023002', 'A2', 'Alfa'],
     ]);
 
     const preview = await service.previewImport(eventoId, file);
-    expect(preview).toEqual({
-      totalLinhas: 2,
-      validas: 2,
-      invalidas: 0,
-      erros: [],
-    });
+    expect(preview.totalLinhas).toBe(2);
+    expect(preview.linhasValidas).toBe(2);
+    expect(preview.linhasComErro).toBe(0);
+    expect(preview.linhas.every((linha) => linha.status === 'VALIDO')).toBe(
+      true,
+    );
 
     const confirm = await service.confirmImport(eventoId, file);
     expect(confirm.importados).toBe(2);
@@ -78,28 +78,45 @@ describe('Persistência de participantes (integração)', () => {
       matricula: '2023001',
       turma: 'A1',
       grupoId: grupoAlfaId,
-      grupoNome: 'Alfa',
+      grupo: 'Alfa',
     });
   });
 
   it('detecta matrícula duplicada e grupo inexistente na prévia', async () => {
-    const file = csv([
+    const file = csvFile([
       ['Ana', '2023001', 'A1', 'Alfa'],
       ['Bia', '2023003', 'A3', 'NaoExiste'],
     ]);
 
     const preview = await service.previewImport(eventoId, file);
 
-    expect(preview.validas).toBe(0);
-    expect(preview.invalidas).toBe(2);
-    expect(preview.erros).toEqual(
+    expect(preview.linhasValidas).toBe(0);
+    expect(preview.linhasComErro).toBe(2);
+    expect(preview.linhas).toEqual(
       expect.arrayContaining([
-        {
+        expect.objectContaining({
           linha: 2,
-          problema: "matricula '2023001' já cadastrada neste evento",
-        },
-        { linha: 3, problema: "grupo 'NaoExiste' não pertence ao evento" },
+          status: 'ERRO',
+          motivoErro: "matricula '2023001' já cadastrada neste evento",
+        }),
+        expect.objectContaining({
+          linha: 3,
+          status: 'ERRO',
+          motivoErro: "grupo 'NaoExiste' não pertence ao evento",
+        }),
       ]),
     );
+  });
+
+  it('recusa confirmar importação com erro (422) sem gravar', async () => {
+    const file = csvFile([
+      ['Carlos', '2023004', 'A1', 'Alfa'],
+      ['', '', '', ''],
+    ]);
+
+    await expect(service.confirmImport(eventoId, file)).rejects.toThrow();
+    await expect(
+      prisma.participante.count({ where: { eventoId } }),
+    ).resolves.toBe(2);
   });
 });

@@ -33,6 +33,7 @@ interface CorpoErroPadrao {
   statusCode: number;
   message: string | string[];
   error: string;
+  [chave: string]: unknown;
 }
 
 interface ErroPrismaConhecido {
@@ -89,6 +90,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
       };
     }
 
+    if (this.ehErroLimiteUpload(exception)) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'O arquivo excede o limite de 5 MB',
+        error: NOMES_STATUS_HTTP[HttpStatus.BAD_REQUEST],
+      };
+    }
+
     if (this.ehErroPrismaConhecido(exception)) {
       return this.tratarErroPrisma(exception);
     }
@@ -140,6 +149,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         statusCode,
         message,
         error,
+        ...this.camposExtras(objeto),
       };
     }
 
@@ -275,6 +285,29 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     return partes.join(' ');
+  }
+
+  private camposExtras(
+    objeto: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(objeto).filter(
+        ([chave]) =>
+          chave !== 'statusCode' && chave !== 'message' && chave !== 'error',
+      ),
+    );
+  }
+
+  private ehErroLimiteUpload(exception: unknown): boolean {
+    if (typeof exception !== 'object' || exception === null) {
+      return false;
+    }
+
+    const erro = exception as Record<string, unknown>;
+    return (
+      erro.name === 'MulterError' &&
+      (erro.code === 'LIMIT_FILE_SIZE' || erro.code === 'LIMIT_UNEXPECTED_FILE')
+    );
   }
 
   private formatarNomeExcecao(nome: string): string {

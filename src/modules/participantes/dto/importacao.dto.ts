@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ParticipanteResumoDto } from './participante-resumo.dto.js';
 
-export class ImportacaoErroDto {
+export class ImportacaoLinhaDto {
   @ApiProperty({
     description: 'Número da linha do arquivo (o cabeçalho é a linha 1).',
     type: 'integer',
@@ -9,11 +9,32 @@ export class ImportacaoErroDto {
   })
   linha: number;
 
+  @ApiProperty({ description: 'Nome da linha.', example: 'João da Silva' })
+  nome: string;
+
+  @ApiProperty({ description: 'Matrícula da linha.', example: '2023001' })
+  matricula: string;
+
+  @ApiProperty({ description: 'Turma da linha.', example: 'A1' })
+  turma: string;
+
+  @ApiProperty({ description: 'Grupo informado na linha.', example: 'Alfa' })
+  grupo: string;
+
   @ApiProperty({
-    description: 'Descrição do problema encontrado na linha.',
-    example: "matricula '123' duplicada no arquivo",
+    description: 'Situação da linha após a validação.',
+    enum: ['VALIDO', 'ERRO'],
+    example: 'VALIDO',
   })
-  problema: string;
+  status: 'VALIDO' | 'ERRO';
+
+  @ApiProperty({
+    description:
+      'Motivo do erro quando status é ERRO; null quando a linha é válida.',
+    example: null,
+    nullable: true,
+  })
+  motivoErro: string | null;
 }
 
 export class ImportacaoPrevistaDto {
@@ -29,20 +50,20 @@ export class ImportacaoPrevistaDto {
     type: 'integer',
     example: 8,
   })
-  validas: number;
+  linhasValidas: number;
 
   @ApiProperty({
-    description: 'Quantidade de linhas inválidas.',
+    description: 'Quantidade de linhas com erro.',
     type: 'integer',
     example: 2,
   })
-  invalidas: number;
+  linhasComErro: number;
 
   @ApiProperty({
-    description: 'Problemas encontrados por linha inválida.',
-    type: () => [ImportacaoErroDto],
+    description: 'Todas as linhas do arquivo, com status e motivo de erro.',
+    type: () => [ImportacaoLinhaDto],
   })
-  erros: ImportacaoErroDto[];
+  linhas: ImportacaoLinhaDto[];
 }
 
 export class ImportacaoConfirmadaDto {

@@ -34,5 +34,5 @@ export class ParticipanteResumoDto {
     description: 'Nome do grupo do participante.',
     example: 'Alfa',
   })
-  grupoNome: string;
+  grupo: string;
 }

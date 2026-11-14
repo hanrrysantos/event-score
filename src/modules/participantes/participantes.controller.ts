@@ -22,18 +22,23 @@ import {
   ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErroPadraoDto } from '../../common/dto/erro-padrao.dto.js';
-import { PaginacaoQueryDto } from '../../common/dto/paginacao-query.dto.js';
 import {
   ImportacaoConfirmadaDto,
   ImportacaoPrevistaDto,
 } from './dto/importacao.dto.js';
+import { ListarParticipantesQueryDto } from './dto/listar-participantes-query.dto.js';
 import { ParticipanteResumoDto } from './dto/participante-resumo.dto.js';
 import { ParticipantesService } from './participantes.service.js';
 
+const TAMANHO_MAXIMO_ARQUIVO = 5 * 1024 * 1024;
+
 interface UploadedFile {
   buffer: Buffer;
+  mimetype?: string;
+  originalname?: string;
 }
 
 @ApiTags('Participantes')
@@ -58,14 +63,18 @@ export class ParticipantesController {
   @ApiNotFoundResponse({ type: ErroPadraoDto })
   list(
     @Param('eventoId', ParseIntPipe) eventId: number,
-    @Query() query: PaginacaoQueryDto,
+    @Query() query: ListarParticipantesQueryDto,
   ) {
     return this.participantes.list(eventId, query);
   }
 
-  @Post('importacao')
+  @Post('importacao/previa')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('arquivo'))
+  @UseInterceptors(
+    FileInterceptor('arquivo', {
+      limits: { fileSize: TAMANHO_MAXIMO_ARQUIVO },
+    }),
+  )
   @ApiOperation({ summary: 'Pré-visualizar importação de participantes' })
   @ApiConsumes('multipart/form-data')
   @ApiOkResponse({ type: ImportacaoPrevistaDto })
@@ -74,32 +83,31 @@ export class ParticipantesController {
     @Param('eventoId', ParseIntPipe) eventId: number,
     @UploadedFile() file?: UploadedFile,
   ): Promise<ImportacaoPrevistaDto> {
-    return this.participantes.previewImport(
-      eventId,
-      this.requireFileBuffer(file),
-    );
+    return this.participantes.previewImport(eventId, this.requireFile(file));
   }
 
-  @Post('importacao/confirmar')
-  @UseInterceptors(FileInterceptor('arquivo'))
-  @ApiOperation({ summary: 'Confirmar e importar participantes' })
+  @Post('importacao')
+  @UseInterceptors(
+    FileInterceptor('arquivo', {
+      limits: { fileSize: TAMANHO_MAXIMO_ARQUIVO },
+    }),
+  )
+  @ApiOperation({ summary: 'Importar participantes (grava após validação)' })
   @ApiConsumes('multipart/form-data')
   @ApiCreatedResponse({ type: ImportacaoConfirmadaDto })
   @ApiNotFoundResponse({ type: ErroPadraoDto })
+  @ApiUnprocessableEntityResponse({ type: ImportacaoPrevistaDto })
   confirm(
     @Param('eventoId', ParseIntPipe) eventId: number,
     @UploadedFile() file?: UploadedFile,
   ): Promise<ImportacaoConfirmadaDto> {
-    return this.participantes.confirmImport(
-      eventId,
-      this.requireFileBuffer(file),
-    );
+    return this.participantes.confirmImport(eventId, this.requireFile(file));
   }
 
-  private requireFileBuffer(file?: UploadedFile): Buffer {
+  private requireFile(file?: UploadedFile): UploadedFile {
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('Arquivo CSV é obrigatório');
+      throw new BadRequestException('Arquivo CSV ou XLSX é obrigatório');
     }
-    return file.buffer;
+    return file;
   }
 }

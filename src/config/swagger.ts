@@ -11,7 +11,7 @@ import { CriarGrupoDto } from '../modules/grupos/dto/criar-grupo.dto.js';
 import { GrupoResumoDto } from '../modules/grupos/dto/grupo-resumo.dto.js';
 import {
   ImportacaoConfirmadaDto,
-  ImportacaoErroDto,
+  ImportacaoLinhaDto,
   ImportacaoPrevistaDto,
 } from '../modules/participantes/dto/importacao.dto.js';
 import { ParticipanteResumoDto } from '../modules/participantes/dto/participante-resumo.dto.js';
@@ -43,7 +43,7 @@ export function configurarSwagger(app: INestApplication): void {
       GrupoResumoDto,
       ParticipanteResumoDto,
       ImportacaoPrevistaDto,
-      ImportacaoErroDto,
+      ImportacaoLinhaDto,
       ImportacaoConfirmadaDto,
       ErroPadraoDto,
       ErroValidacaoDto,

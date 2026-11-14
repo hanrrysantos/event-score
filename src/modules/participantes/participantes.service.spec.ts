@@ -1,12 +1,15 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ParticipantesService } from './participantes.service.js';
 
 const EVENT_ID = 1;
 
-function csv(rows: string[][]): Buffer {
-  const header = 'nome,matricula,turma,grupo';
-  const lines = rows.map((row) => row.join(','));
-  return Buffer.from([header, ...lines].join('\n'), 'utf-8');
+function csvFile(rows: string[][], delimiter = ','): { buffer: Buffer } {
+  const header = ['nome', 'matricula', 'turma', 'grupo'].join(delimiter);
+  const lines = rows.map((row) => row.join(delimiter));
+  return { buffer: Buffer.from([header, ...lines].join('\n'), 'utf-8') };
 }
 
 describe('ParticipantesService', () => {
@@ -30,7 +33,7 @@ describe('ParticipantesService', () => {
     vi.clearAllMocks();
   });
 
-  it('lista participantes com envelope de paginação', async () => {
+  it('lista participantes com envelope, filtros e campo grupo', async () => {
     const { service, prisma } = setup();
     prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
     prisma.participante.count.mockResolvedValue(1);
@@ -44,8 +47,27 @@ describe('ParticipantesService', () => {
       },
     ]);
 
-    const result = await service.list(EVENT_ID, { pagina: 1, tamanho: 20 });
+    const result = await service.list(EVENT_ID, {
+      pagina: 1,
+      tamanho: 20,
+      grupoId: 1,
+      turma: 'A1',
+      busca: 'João',
+    });
 
+    expect(prisma.participante.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          eventoId: EVENT_ID,
+          grupoId: 1,
+          turma: 'A1',
+          OR: [
+            { nome: { contains: 'João', mode: 'insensitive' } },
+            { matricula: { contains: 'João', mode: 'insensitive' } },
+          ],
+        },
+      }),
+    );
     expect(result.dados).toEqual([
       {
         id: 1,
@@ -53,15 +75,9 @@ describe('ParticipantesService', () => {
         matricula: '123',
         turma: 'A1',
         grupoId: 1,
-        grupoNome: 'Alfa',
+        grupo: 'Alfa',
       },
     ]);
-    expect(result.paginacao).toEqual({
-      pagina: 1,
-      tamanho: 20,
-      totalItens: 1,
-      totalPaginas: 1,
-    });
     expect(result.resumo).toEqual({ totalParticipantes: 1 });
   });
 
@@ -74,13 +90,13 @@ describe('ParticipantesService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('gera prévia com linhas válidas e inválidas', async () => {
+  it('gera prévia com todas as linhas, status e motivo de erro', async () => {
     const { service, prisma } = setup();
     prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
     prisma.grupo.findMany.mockResolvedValue([{ id: 1, nome: 'Alfa' }]);
     prisma.participante.findMany.mockResolvedValue([]);
 
-    const file = csv([
+    const file = csvFile([
       ['João', '123', 'A1', 'Alfa'],
       ['', '456', 'A2', 'Alfa'],
       ['Maria', '789', 'A3', 'Inexistente'],
@@ -90,15 +106,72 @@ describe('ParticipantesService', () => {
     const result = await service.previewImport(EVENT_ID, file);
 
     expect(result.totalLinhas).toBe(4);
-    expect(result.validas).toBe(1);
-    expect(result.invalidas).toBe(3);
-    expect(result.erros).toEqual(
-      expect.arrayContaining([
-        { linha: 3, problema: 'nome é obrigatório' },
-        { linha: 4, problema: "grupo 'Inexistente' não pertence ao evento" },
-        { linha: 5, problema: "matricula '123' duplicada no arquivo" },
-      ]),
+    expect(result.linhasValidas).toBe(1);
+    expect(result.linhasComErro).toBe(3);
+    expect(result.linhas).toEqual([
+      {
+        linha: 2,
+        nome: 'João',
+        matricula: '123',
+        turma: 'A1',
+        grupo: 'Alfa',
+        status: 'VALIDO',
+        motivoErro: null,
+      },
+      {
+        linha: 3,
+        nome: '',
+        matricula: '456',
+        turma: 'A2',
+        grupo: 'Alfa',
+        status: 'ERRO',
+        motivoErro: 'nome é obrigatório',
+      },
+      {
+        linha: 4,
+        nome: 'Maria',
+        matricula: '789',
+        turma: 'A3',
+        grupo: 'Inexistente',
+        status: 'ERRO',
+        motivoErro: "grupo 'Inexistente' não pertence ao evento",
+      },
+      {
+        linha: 5,
+        nome: 'Ana',
+        matricula: '123',
+        turma: 'A4',
+        grupo: 'Alfa',
+        status: 'ERRO',
+        motivoErro: "matricula '123' duplicada no arquivo",
+      },
+    ]);
+  });
+
+  it('aceita CSV com ponto e vírgula e aponta linha em branco', async () => {
+    const { service, prisma } = setup();
+    prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
+    prisma.grupo.findMany.mockResolvedValue([{ id: 1, nome: 'Alfa' }]);
+    prisma.participante.findMany.mockResolvedValue([]);
+
+    const file = csvFile(
+      [['João', '123', 'A1', 'Alfa'], [], ['Maria', '456', 'A2', 'Alfa']],
+      ';',
     );
+
+    const result = await service.previewImport(EVENT_ID, file);
+
+    expect(result.linhasValidas).toBe(2);
+    expect(result.linhasComErro).toBe(1);
+    expect(result.linhas[1]).toEqual({
+      linha: 3,
+      nome: '',
+      matricula: '',
+      turma: '',
+      grupo: '',
+      status: 'ERRO',
+      motivoErro: 'linha em branco',
+    });
   });
 
   it('sinaliza matrícula já cadastrada no evento', async () => {
@@ -109,16 +182,16 @@ describe('ParticipantesService', () => {
 
     const result = await service.previewImport(
       EVENT_ID,
-      csv([['João', '123', 'A1', 'Alfa']]),
+      csvFile([['João', '123', 'A1', 'Alfa']]),
     );
 
-    expect(result.validas).toBe(0);
-    expect(result.erros).toEqual([
-      { linha: 2, problema: "matricula '123' já cadastrada neste evento" },
-    ]);
+    expect(result.linhasComErro).toBe(1);
+    expect(result.linhas[0].motivoErro).toBe(
+      "matricula '123' já cadastrada neste evento",
+    );
   });
 
-  it('confirma importação e persiste somente linhas válidas', async () => {
+  it('confirma importação sem erros e persiste todas as linhas', async () => {
     const { service, prisma } = setup();
     prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
     prisma.grupo.findMany.mockResolvedValue([{ id: 1, nome: 'Alfa' }]);
@@ -133,12 +206,10 @@ describe('ParticipantesService', () => {
       },
     ]);
 
-    const file = csv([
-      ['João', '123', 'A1', 'Alfa'],
-      ['', '456', 'A2', 'Alfa'],
-    ]);
-
-    const result = await service.confirmImport(EVENT_ID, file);
+    const result = await service.confirmImport(
+      EVENT_ID,
+      csvFile([['João', '123', 'A1', 'Alfa']]),
+    );
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
@@ -150,21 +221,27 @@ describe('ParticipantesService', () => {
           matricula: '123',
           turma: 'A1',
           grupoId: 1,
-          grupoNome: 'Alfa',
+          grupo: 'Alfa',
         },
       ],
     });
   });
 
-  it('retorna 400 ao confirmar sem linhas válidas', async () => {
+  it('recusa confirmação com erro (422) e não grava nada', async () => {
     const { service, prisma } = setup();
     prisma.evento.findUnique.mockResolvedValue({ id: EVENT_ID });
     prisma.grupo.findMany.mockResolvedValue([]);
     prisma.participante.findMany.mockResolvedValue([]);
 
-    await expect(
-      service.confirmImport(EVENT_ID, csv([['', '', '', '']])),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const promise = service.confirmImport(
+      EVENT_ID,
+      csvFile([
+        ['João', '123', 'A1', 'Alfa'],
+        ['', '', '', ''],
+      ]),
+    );
+
+    await expect(promise).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
