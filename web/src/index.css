@@ -86,6 +86,14 @@ textarea {
   cursor: pointer;
 }
 
+.nav-usuario {
+  padding: 0 4px 0 12px;
+  font-size: 13px;
+  color: var(--texto-suave);
+  white-space: nowrap;
+  border-left: 1px solid var(--borda);
+}
+
 .nav a.active {
   background: var(--preto);
   color: var(--branco);

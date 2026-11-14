@@ -21,6 +21,7 @@ export const useLayout = () => useOutletContext<ContextoLayout>();
 
 export default function Layout() {
   const [eventoAtivo, setEventoAtivo] = useState<Evento | null>();
+  const [usuario, setUsuario] = useState<string>();
   const logado = Boolean(token.ler());
 
   const recarregarEventoAtivo = useCallback(() => {
@@ -31,7 +32,12 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
-    if (logado) recarregarEventoAtivo();
+    if (!logado) return;
+    recarregarEventoAtivo();
+    // Contrato v0.3: o cabeçalho mostra quem está logado (GET /auth/me). Token vencido cai no 401 do cliente.
+    api<Schemas['UsuarioResumoDto']>('/auth/me')
+      .then((u) => setUsuario(u.nome))
+      .catch(() => setUsuario(undefined));
   }, [logado, recarregarEventoAtivo]);
 
   if (!logado) return <Navigate to="/login" replace />;
@@ -50,7 +56,8 @@ export default function Layout() {
             {nome}
           </NavLink>
         ))}
-        <button type="button" onClick={sair}>
+        {usuario && <span className="nav-usuario">{usuario}</span>}
+        <button type="button" onClick={sair} aria-label={usuario ? `Sair (${usuario})` : 'Sair'}>
           Sair
         </button>
       </nav>

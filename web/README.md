@@ -47,13 +47,13 @@ src/
 └── texto.ts      # iniciais do nome
 ```
 
-Cada tela usa o **evento ativo** (`GET /eventos/ativo`), que o layout carrega uma vez e entrega às telas. Sem evento ativo, a tela mostra um aviso com link para a aba Evento. A exceção é a configuração, que recebe o evento pela rota e serve para qualquer edição.
+O cabeçalho de todas as telas mostra o nome de quem está logado (`GET /auth/me`) e o evento ativo (`GET /eventos/ativo`). O layout carrega o evento ativo uma vez e entrega às telas. Sem evento ativo, a tela mostra um aviso com link para a aba Evento. A exceção é a configuração, que recebe o evento pela rota e serve para qualquer edição.
 
 ## Telas
 
 | Tela | Rota | Requisitos | Rotas da API |
 |---|---|---|---|
-| Login | `/login` | RNF02 | `POST /auth/login` |
+| Login | `/login` | RNF02 | `POST /auth/login`; no cabeçalho, `GET /auth/me` |
 | Eventos | `/evento` | RF01 | `GET /eventos`, `POST /eventos`, `PATCH /eventos/{id}`, `POST /eventos/{id}/ativar`, `GET/POST/DELETE /eventos/{id}/dias` |
 | Configuração do evento | `/evento/{id}/configuracao` | RF02, RF13 | `GET/PUT /eventos/{id}/configuracao` |
 | Grupos | `/grupos` | RF03 | `GET/POST/PATCH/DELETE /eventos/{id}/grupos`, `GET /eventos/{id}` (`temResultado`) |
