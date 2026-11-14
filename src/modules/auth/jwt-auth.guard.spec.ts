@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import type { AuthUser } from './auth-user.repository.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { JwtAuthenticatedRequest } from './jwt-auth.guard.js';
@@ -23,7 +24,7 @@ describe('JwtAuthGuard', () => {
     findByEmail: vi.fn(),
     findById: vi.fn(async (): Promise<AuthUser | null> => admin),
   };
-  const guard = new JwtAuthGuard(jwt, users);
+  const guard = new JwtAuthGuard(jwt, users, new Reflector());
 
   beforeEach(() => {
     users.findById.mockReset();
@@ -34,7 +35,9 @@ describe('JwtAuthGuard', () => {
     const request = { headers: { authorization } } as JwtAuthenticatedRequest;
     const executionContext = {
       switchToHttp: () => ({ getRequest: () => request }),
-    } as ExecutionContext;
+      getHandler: () => context,
+      getClass: () => JwtAuthGuard,
+    } as unknown as ExecutionContext;
     return { request, executionContext };
   }
 

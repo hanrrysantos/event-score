@@ -6,7 +6,7 @@ export const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
-  // Necessária quando AuthModule for integrado à aplicação na T15.
+  // Os scripts de banco não precisam do segredo; a API exige-o ao iniciar.
   JWT_SECRET: z.string().min(32).optional(),
 });
 
@@ -22,4 +22,12 @@ export function validateEnv(config: Record<string, unknown>): Env {
   }
 
   return result.data;
+}
+
+export function validateAppEnv(config: Record<string, unknown>): Env {
+  const env = validateEnv(config);
+  if (!env.JWT_SECRET) {
+    throw new Error('JWT_SECRET deve ter pelo menos 32 caracteres');
+  }
+  return env;
 }

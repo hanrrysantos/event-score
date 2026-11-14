@@ -1,4 +1,35 @@
+import 'dotenv/config';
+import { randomBytes } from 'node:crypto';
 import { defineConfig } from 'vitest/config';
+
+const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim();
+
+if (!testDatabaseUrl) {
+  throw new Error(
+    'TEST_DATABASE_URL deve apontar explicitamente para um banco exclusivo de testes',
+  );
+}
+
+let testDatabaseName: string;
+try {
+  const url = new URL(testDatabaseUrl);
+  if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+    throw new Error('protocolo inválido');
+  }
+  testDatabaseName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+} catch {
+  throw new Error('TEST_DATABASE_URL deve ser uma URL PostgreSQL válida');
+}
+
+if (!/(^|[_-])tests?($|[_-])/i.test(testDatabaseName)) {
+  throw new Error(
+    'TEST_DATABASE_URL recusada: o nome do banco deve conter o marcador "test"',
+  );
+}
+
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = testDatabaseUrl;
+process.env.JWT_SECRET = randomBytes(32).toString('hex');
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

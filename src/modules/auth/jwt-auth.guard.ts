@@ -5,8 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthUserRepository } from './auth-user.repository.js';
+import { IS_PUBLIC_KEY } from './public.decorator.js';
 
 export interface JwtAuthenticatedRequest extends Request {
   user?: { id: number };
@@ -17,9 +19,19 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly users: AuthUserRepository,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (
+      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    ) {
+      return true;
+    }
+
     const request = context
       .switchToHttp()
       .getRequest<JwtAuthenticatedRequest>();

@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { EventosModule } from '../modules/eventos/eventos.module.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { configurarSwagger } from './swagger.js';
 
 describe('Swagger de eventos', () => {
@@ -12,8 +14,11 @@ describe('Swagger de eventos', () => {
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
-      imports: [EventosModule],
-    }).compile();
+      imports: [PrismaModule, EventosModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api/v1', { exclude: ['health'] });
     configurarSwagger(app);
@@ -88,4 +93,120 @@ describe('Swagger de eventos', () => {
       });
     },
   );
+
+  it('publica os DTOs de erro padronizados (ErroPadraoDto e ErroValidacaoDto)', () => {
+    expect(document.components?.schemas).toMatchObject({
+      ErroPadraoDto: {
+        type: 'object',
+        required: ['statusCode', 'message', 'error'],
+        properties: {
+          statusCode: { type: 'integer' },
+          message: { type: 'string' },
+          error: { type: 'string' },
+        },
+      },
+      ErroValidacaoDto: {
+        type: 'object',
+        required: ['statusCode', 'message', 'error'],
+        properties: {
+          statusCode: { type: 'integer' },
+          message: { type: 'array', items: { type: 'string' } },
+          error: { type: 'string' },
+        },
+      },
+    });
+  });
+
+  it('publica o esquema Bearer JWT para as rotas administrativas', () => {
+    expect(document.components?.securitySchemes?.bearer).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    });
+    expect(document.security).toBeUndefined();
+  });
+
+  it.each([
+    ['/api/v1/eventos', 'get', 'listarEventos', '200'],
+    ['/api/v1/eventos', 'post', 'criarEvento', '201'],
+    ['/api/v1/eventos/ativo', 'get', 'obterEventoAtivo', '200'],
+    ['/api/v1/eventos/{eventoId}', 'get', 'obterEventoPorId', '200'],
+    ['/api/v1/eventos/{eventoId}', 'patch', 'atualizarEvento', '200'],
+    ['/api/v1/eventos/{eventoId}/ativar', 'post', 'ativarEvento', '200'],
+  ] as const)(
+    'documenta %s %s com status de sucesso e segurança Bearer',
+    (path, method, operationId, status) => {
+      const operation = document.paths[path]?.[method];
+      expect(operation).toMatchObject({
+        operationId,
+        security: [{ bearer: [] }],
+        responses: {
+          [status]: expect.any(Object),
+          '401': {
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErroPadraoDto' },
+              },
+            },
+          },
+        },
+      });
+    },
+  );
+
+  it('publica corpos e respostas das rotas conforme os DTOs do contrato', () => {
+    const resumo = { $ref: '#/components/schemas/EventoResumoDto' };
+    expect(
+      document.paths['/api/v1/eventos']?.get?.responses['200'],
+    ).toMatchObject({
+      content: {
+        'application/json': { schema: { type: 'array', items: resumo } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos']?.post).toMatchObject({
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CriarEventoDto' },
+          },
+        },
+      },
+      responses: {
+        '201': { content: { 'application/json': { schema: resumo } } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos/{eventoId}']?.patch).toMatchObject({
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/AtualizarEventoDto' },
+          },
+        },
+      },
+      responses: {
+        '200': { content: { 'application/json': { schema: resumo } } },
+      },
+    });
+    expect(document.paths['/api/v1/eventos/{eventoId}']?.get).toMatchObject({
+      parameters: [
+        {
+          name: 'eventoId',
+          in: 'path',
+          required: true,
+          schema: { type: 'integer', minimum: 1 },
+        },
+      ],
+      responses: {
+        '200': {
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/EventoDetalheDto' },
+            },
+          },
+        },
+      },
+    });
+  });
 });

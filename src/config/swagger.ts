@@ -1,5 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ErroPadraoDto } from '../common/dto/erro-padrao.dto.js';
+import { ErroValidacaoDto } from '../common/dto/erro-validacao.dto.js';
 import { AtualizarEventoDto } from '../modules/eventos/dto/atualizar-evento.dto.js';
 import { CriarEventoDto } from '../modules/eventos/dto/criar-evento.dto.js';
 import { EventoDetalheDto } from '../modules/eventos/dto/evento-detalhe.dto.js';
@@ -10,15 +12,25 @@ export function configurarSwagger(app: INestApplication): void {
     .setTitle('EventScore API')
     .setDescription('API de apuração e gestão do EventScore (Arena Comp 2026)')
     .setVersion('0.1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Informe o JWT recebido em POST /api/v1/auth/login.',
+      },
+      'bearer',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig, {
-    // Os DTOs precisam aparecer mesmo antes da implementação das rotas da T18.
+    // Mantém disponíveis também os schemas usados nas respostas de erro.
     extraModels: [
       CriarEventoDto,
       AtualizarEventoDto,
       EventoResumoDto,
       EventoDetalheDto,
+      ErroPadraoDto,
+      ErroValidacaoDto,
     ],
   });
   SwaggerModule.setup('api/docs', app, document, {
