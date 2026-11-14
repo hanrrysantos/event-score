@@ -1,0 +1,134 @@
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.login-form {
+  background: var(--cartao);
+  padding: 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.login-form form {
+  display: grid;
+  gap: 16px;
+  max-width: 400px;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-logo div {
+  display: grid;
+}
+
+.login-logo small {
+  color: var(--texto-suave);
+}
+
+.login-selo {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--preto);
+  color: var(--branco);
+  font-weight: 700;
+}
+
+.login-tag {
+  justify-self: start;
+  background: var(--preto);
+  color: var(--branco);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--raio-pilula);
+}
+
+.login-form h1 {
+  font-size: 40px;
+  letter-spacing: -0.02em;
+}
+
+.login-sub {
+  color: var(--texto-suave);
+}
+
+.login-manter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.login-manter input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--preto);
+}
+
+.login-rodape {
+  margin-top: auto;
+  color: var(--texto-suave);
+}
+
+.login-arte {
+  background: var(--preto);
+  color: var(--branco);
+  padding: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.login-arte h2 {
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.login-arte p {
+  color: #cfcfcf;
+}
+
+.login-barras {
+  display: grid;
+  gap: 14px;
+  max-width: 360px;
+}
+
+.login-barras i {
+  display: block;
+  height: 8px;
+  border-radius: var(--raio-pilula);
+  background: #2a2a2a;
+  overflow: hidden;
+}
+
+.login-barras span {
+  display: block;
+  height: 100%;
+  background: var(--branco);
+}
+
+@media (max-width: 800px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+  .login-form {
+    padding: 32px 16px;
+  }
+  .login-arte {
+    display: none;
+  }
+}

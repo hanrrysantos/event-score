@@ -1,0 +1,54 @@
+.desafio-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.desafio-bloco {
+  display: grid;
+  gap: 14px;
+}
+
+.desafio-bloco h2,
+.titulo-bloco {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+}
+
+.desafio-bloco select,
+.pontos input {
+  padding: 13px 18px;
+  border-radius: var(--raio-pilula);
+  border: 1px solid var(--borda);
+  background: var(--campo);
+  font-size: 16px;
+}
+
+.desafio-acoes {
+  display: flex;
+  gap: 10px;
+}
+
+.pontos td {
+  padding: 8px;
+}
+
+.pontos td:nth-child(2) {
+  width: 55%;
+}
+
+.pontos input {
+  width: 80px;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.desafio-linha-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

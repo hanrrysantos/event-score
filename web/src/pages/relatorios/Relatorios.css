@@ -1,0 +1,37 @@
+.relatorios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.relatorio {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.relatorio-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.turma {
+  display: grid;
+  gap: 8px;
+}
+
+.turma h3 {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.presente {
+  color: #1b5e20;
+  font-weight: 500;
+}
+
+.ausente-texto {
+  color: var(--erro);
+  font-weight: 500;
+}

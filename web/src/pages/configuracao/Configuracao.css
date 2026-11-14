@@ -1,0 +1,131 @@
+.config {
+  display: grid;
+  gap: 20px;
+}
+
+.hero-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.config-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.config-largo {
+  grid-column: 1 / -1;
+}
+
+.config-bloco {
+  display: grid;
+  gap: 12px;
+}
+
+.config-bloco h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+}
+
+.dica {
+  font-size: 13px;
+  color: var(--texto-suave);
+  margin-top: -6px;
+}
+
+.config-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-valor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texto-suave);
+}
+
+.config-bloco input,
+.config-bloco select {
+  padding: 11px 16px;
+  border-radius: var(--raio-pilula);
+  border: 1px solid var(--borda);
+  background: var(--campo);
+  min-width: 0;
+}
+
+.config-valor input {
+  width: 100px;
+}
+
+.config-item {
+  display: grid;
+  grid-template-columns: 1fr 80px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--borda);
+  background: var(--branco);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.btn-icone:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.criterios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.criterio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--branco);
+}
+
+.criterio select {
+  flex: 1 1 200px;
+}
+
+.criterio-ordem {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--preto);
+  color: var(--branco);
+  font-weight: 700;
+}
+
+.criterio-acoes {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.config-bloco > .btn-contorno {
+  justify-self: start;
+}

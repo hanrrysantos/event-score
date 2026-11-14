@@ -1,0 +1,79 @@
+.hero-arquivo {
+  color: #cfcfcf;
+}
+
+.soltar {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 36px 22px;
+  border: 2px dashed #8a8a8a;
+  text-align: center;
+}
+
+.soltar-ativo {
+  border-color: var(--preto);
+  background: var(--branco);
+}
+
+.soltar small {
+  color: var(--texto-suave);
+}
+
+.soltar .btn {
+  margin-top: 8px;
+}
+
+.soltar-icone {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--preto);
+  color: var(--branco);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.interruptor-texto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.interruptor-texto input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--preto);
+}
+
+.selo {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: var(--raio-pilula);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--branco);
+}
+
+.selo-ok {
+  background: var(--preto);
+}
+
+.selo-erro {
+  background: var(--erro);
+}
+
+.rodape-acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rodape-acao small {
+  color: var(--texto-suave);
+}

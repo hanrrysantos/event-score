@@ -1,0 +1,169 @@
+.eventos {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.vazio {
+  padding: 16px;
+  color: var(--texto-suave);
+}
+
+.evento {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--branco);
+}
+
+.evento-codigo {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--campo);
+}
+
+.evento-ativo .evento-codigo {
+  background: var(--preto);
+  color: var(--branco);
+}
+
+.evento-info {
+  display: grid;
+  gap: 2px;
+}
+
+.evento-info small {
+  color: var(--texto-suave);
+}
+
+.evento-acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.evento-acoes a {
+  text-decoration: none;
+}
+
+.interruptor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.interruptor button {
+  width: 44px;
+  height: 26px;
+  border-radius: var(--raio-pilula);
+  border: 0;
+  background: var(--borda);
+  position: relative;
+  cursor: pointer;
+}
+
+.interruptor button::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--branco);
+  transition: transform 0.15s;
+}
+
+.interruptor button[aria-checked='true'] {
+  background: var(--preto);
+  cursor: default;
+}
+
+.interruptor button[aria-checked='true']::after {
+  transform: translateX(18px);
+}
+
+.interruptor button:disabled:not([aria-checked='true']) {
+  cursor: progress;
+}
+
+@media (max-width: 640px) {
+  .evento {
+    grid-template-columns: auto 1fr;
+  }
+}
+
+/* Dias operacionais do modal */
+.dias {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.dias legend {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  margin-bottom: 8px;
+}
+
+.dia {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--campo);
+}
+
+.dia-numero {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--preto);
+  color: var(--branco);
+  font-weight: 700;
+}
+
+.dia-texto {
+  display: grid;
+  gap: 2px;
+}
+
+.dia-texto input {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 14px;
+}
+
+.dia-texto small {
+  color: var(--texto-suave);
+}
+
+.campo-curto input {
+  max-width: 160px;
+}
+
+.campo-quantidade span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.campo-quantidade input {
+  max-width: 90px;
+  text-align: center;
+}

@@ -1,0 +1,783 @@
+openapi: 3.0.3
+info:
+  title: EventScore - mock do front-end
+  version: 0.1.0-front
+  description: >
+    Mock usado só pelo front (npm run mock). As rotas da Sprint 01 vêm do OpenAPI oficial
+    (docs/openapi/openapi-v0.1.yaml). As demais seguem o contrato front x API v0.3 e servem
+    de dados de exemplo até o back-end publicar a versão dele; quando publicar, a rota sai daqui.
+
+servers:
+  - url: http://localhost:3000/api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Sprint 01: OpenAPI oficial do back-end
+  /auth/login:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1auth~1login'
+  /auth/me:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1auth~1me'
+  /eventos:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos'
+  /eventos/ativo:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1ativo'
+  /eventos/{eventoId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}'
+  /eventos/{eventoId}/ativar:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1ativar'
+  /eventos/{eventoId}/dias:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1dias'
+  /eventos/{eventoId}/dias/{diaId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1dias~1{diaId}'
+  /eventos/{eventoId}/grupos:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1grupos'
+  /eventos/{eventoId}/grupos/{grupoId}:
+    $ref: '../../docs/openapi/openapi-v0.1.yaml#/paths/~1eventos~1{eventoId}~1grupos~1{grupoId}'
+
+  # Contrato v0.3, ainda fora do OpenAPI oficial
+  /eventos/{eventoId}/configuracao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Configuração de pontuação do evento (RF02)
+      responses:
+        '200':
+          description: Configuração do evento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuracao'
+              example:
+                conversaoPontoExtra:
+                  - { colocacao: 1, pontoExtra: 1.0 }
+                  - { colocacao: 2, pontoExtra: 0.8 }
+                  - { colocacao: 3, pontoExtra: 0.6 }
+                  - { colocacao: 4, pontoExtra: 0.5 }
+                  - { colocacao: 5, pontoExtra: 0.4 }
+                  - { colocacao: 6, pontoExtra: 0.3 }
+                itensBonificacao:
+                  - { id: 1, nome: Uniformização, teto: 10 }
+                  - { id: 2, nome: Grito de guerra, teto: 10 }
+                penalidadeMin: 10
+                penalidadeMax: 50
+                fatoresPresenca:
+                  - { diasPresentes: 2, fator: 1.0 }
+                  - { diasPresentes: 1, fator: 0.5 }
+                  - { diasPresentes: 0, fator: 0.0 }
+                criteriosDesempate:
+                  - { ordem: 1, tipo: MAIOR_PONTUACAO_DESAFIO, desafioId: 3, descricao: Maior pontuação no Hackathon }
+                  - { ordem: 2, tipo: MENOR_PENALIDADE, desafioId: null, descricao: Menos penalidades }
+    put:
+      summary: Salva a configuração inteira (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Configuracao'
+      responses:
+        '200':
+          description: Configuração salva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuracao'
+        '422':
+          description: Regra de negócio
+          content:
+            application/json:
+              example: { statusCode: 422, message: A penalidade mínima não pode ser maior que a máxima., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/desafios:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Desafios do evento (RF05, RF06)
+      responses:
+        '200':
+          description: Lista de desafios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Desafio'
+              example:
+                - id: 1
+                  nome: Perguntas e Respostas
+                  descricao: Rodadas de perguntas sobre computação
+                  diaId: 1
+                  pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
+                - id: 3
+                  nome: Hackathon
+                  descricao: Desenvolvimento em 6 horas
+                  diaId: 2
+                  pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }]
+    post:
+      summary: Cadastra desafio com a tabela de pontos (uma linha por grupo, RF06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarDesafio'
+      responses:
+        '201':
+          description: Desafio criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 4, nome: Pitch, descricao: Apresentação final, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+        '422':
+          description: Número de linhas diferente do número de grupos
+          content:
+            application/json:
+              example: { statusCode: 422, message: A tabela de pontos precisa ter uma linha por grupo (6)., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/desafios/{desafioId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: desafioId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Detalhe do desafio
+      responses:
+        '200':
+          description: Desafio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 3, nome: Hackathon, descricao: Desenvolvimento em 6 horas, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+    patch:
+      summary: Altera o desafio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarDesafio'
+      responses:
+        '200':
+          description: Desafio alterado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Desafio'
+              example: { id: 3, nome: Hackathon, descricao: Desenvolvimento em 6 horas, diaId: 2, pontosColocacao: [{ colocacao: 1, pontos: 100 }, { colocacao: 2, pontos: 80 }] }
+    delete:
+      summary: Exclui o desafio
+      responses:
+        '204':
+          description: Excluído
+
+  # Lançamentos (RF08 a RF14, RF18)
+  /eventos/{eventoId}/desafios/{desafioId}/resultados:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: desafioId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Colocação de cada grupo no desafio
+      responses:
+        '200':
+          description: Uma linha por grupo; id null se ainda não lançado
+          content:
+            application/json:
+              example:
+                - { id: 11, grupoId: 1, colocacao: 1, ausente: false, pontos: 100 }
+                - { id: null, grupoId: 2, colocacao: null, ausente: false, pontos: 0 }
+    put:
+      summary: Salva todas as colocações do desafio (idempotente; mantém o id de cada linha)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [grupoId, colocacao, ausente]
+                properties:
+                  grupoId: { type: integer }
+                  colocacao: { type: integer, nullable: true, minimum: 1 }
+                  ausente: { type: boolean }
+      responses:
+        '200':
+          description: Colocações salvas
+          content:
+            application/json:
+              example:
+                - { id: 11, grupoId: 1, colocacao: 1, ausente: false, pontos: 100 }
+                - { id: 12, grupoId: 2, colocacao: 2, ausente: false, pontos: 80 }
+        '422':
+          description: Colocação repetida
+          content:
+            application/json:
+              example: { statusCode: 422, message: Dois grupos não podem ter a mesma colocação., error: Unprocessable Entity }
+
+  /auditoria:
+    get:
+      summary: Histórico de alterações de um registro (RF18)
+      parameters:
+        - { name: entidade, in: query, required: true, schema: { type: string } }
+        - { name: registroId, in: query, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Histórico
+          content:
+            application/json:
+              example:
+                - { dataHora: '2026-11-23T14:38:00Z', usuario: Administrador Arena, operacao: INSERT, valorAnterior: null, valorNovo: 'colocacao=2' }
+                - { dataHora: '2026-11-23T15:02:00Z', usuario: Administrador Arena, operacao: UPDATE, valorAnterior: 'colocacao=2', valorNovo: 'colocacao=1' }
+
+  /eventos/{eventoId}/bonificacoes:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Bonificação de cada grupo por item (RF10)
+      responses:
+        '200':
+          description: Por grupo
+          content:
+            application/json:
+              example:
+                - { grupoId: 1, itens: [{ itemBonificacaoId: 1, valor: 10 }, { itemBonificacaoId: 2, valor: 8 }], total: 18 }
+                - { grupoId: 2, itens: [{ itemBonificacaoId: 1, valor: 7 }], total: 7 }
+
+  /eventos/{eventoId}/bonificacoes/{grupoId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: grupoId, in: path, required: true, schema: { type: integer } }
+    put:
+      summary: Registra a bonificação do grupo (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [itemBonificacaoId, valor]
+                properties:
+                  itemBonificacaoId: { type: integer }
+                  valor: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Bonificação registrada
+          content:
+            application/json:
+              example: { grupoId: 1, itens: [{ itemBonificacaoId: 1, valor: 10 }], total: 10 }
+        '422':
+          description: Valor acima do teto
+          content:
+            application/json:
+              example: { statusCode: 422, message: O valor de Uniformização passa do teto de 10., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/penalidades:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Penalidades lançadas (RF11)
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Penalidade'
+              example:
+                - { id: 1, grupoId: 2, pontos: 20, descricao: Atraso na entrega, justificativa: Entregou o projeto 15 minutos depois do prazo }
+    post:
+      summary: Aplica penalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarPenalidade'
+      responses:
+        '201':
+          description: Penalidade aplicada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalidade'
+              example: { id: 2, grupoId: 1, pontos: 10, descricao: Conduta, justificativa: Discussão com a comissão }
+        '422':
+          description: Fora da faixa ou sem justificativa
+          content:
+            application/json:
+              example: { statusCode: 422, message: A penalidade deve estar entre 10 e 50 pontos., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/penalidades/{penalidadeId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: penalidadeId, in: path, required: true, schema: { type: integer } }
+    patch:
+      summary: Corrige penalidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarPenalidade'
+      responses:
+        '200':
+          description: Penalidade corrigida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalidade'
+              example: { id: 1, grupoId: 2, pontos: 15, descricao: Atraso na entrega, justificativa: Entregou o projeto 15 minutos depois do prazo }
+    delete:
+      summary: Remove penalidade
+      responses:
+        '204':
+          description: Removida
+
+  /eventos/{eventoId}/classificacao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Classificação dos grupos (RF12, RF13)
+      responses:
+        '200':
+          description: Classificação, com os empates que os critérios não resolveram
+          content:
+            application/json:
+              example:
+                dados:
+                  - { posicao: 1, grupoId: 1, grupo: Alfa, cor: '#FF5733', pontosDesafios: 260, bonificacao: 18, penalidade: 0, total: 278, empatado: false }
+                  - { posicao: 2, grupoId: 2, grupo: Beta, cor: '#3380FF', pontosDesafios: 231, bonificacao: 7, penalidade: 20, total: 218, empatado: true }
+                  - { posicao: 2, grupoId: 3, grupo: Gama, cor: '#15803D', pontosDesafios: 210, bonificacao: 8, penalidade: 0, total: 218, empatado: true }
+                  - { posicao: 4, grupoId: 4, grupo: Delta, cor: '#B7791F', pontosDesafios: 190, bonificacao: 10, penalidade: 0, total: 200, empatado: false }
+                  - { posicao: 5, grupoId: 5, grupo: Ômega, cor: '#6B46C1', pontosDesafios: 150, bonificacao: 5, penalidade: 10, total: 145, empatado: true }
+                  - { posicao: 5, grupoId: 6, grupo: Sigma, cor: '#18181B', pontosDesafios: 140, bonificacao: 5, penalidade: 0, total: 145, empatado: true }
+                resumo: { desafiosLancados: 4, desafiosTotais: 4, empatesPendentes: [[2, 3], [5, 6]] }
+
+  /eventos/{eventoId}/desempates:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Decisão manual de desempate (RF14); um novo envio substitui o anterior
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [posicoes, justificativa]
+              properties:
+                posicoes:
+                  type: array
+                  items:
+                    type: object
+                    required: [grupoId, posicao]
+                    properties:
+                      grupoId: { type: integer }
+                      posicao: { type: integer, minimum: 1 }
+                justificativa: { type: string, minLength: 1 }
+      responses:
+        '201':
+          description: Desempate registrado, com responsável e data gravados pela API
+          content:
+            application/json:
+              example: { posicoes: [{ grupoId: 2, posicao: 1 }, { grupoId: 1, posicao: 2 }], justificativa: Sorteio na frente das equipes, responsavel: Administrador Arena, dataHora: '2026-11-24T20:10:00Z' }
+
+  /eventos/{eventoId}/apuracao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Apuração individual, calculada na consulta (RF16)
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, default: 1 } }
+        - { name: tamanho, in: query, schema: { type: integer, default: 20 } }
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: turma, in: query, schema: { type: string } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Ponto extra de cada participante
+          content:
+            application/json:
+              example:
+                dados:
+                  - { participanteId: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupo: Alfa, colocacaoGrupo: 1, pontoExtraGrupo: 1.0, diasPresentes: 2, diasTotais: 2, fator: 1.0, pontoExtra: 1.0 }
+                  - { participanteId: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupo: Alfa, colocacaoGrupo: 1, pontoExtraGrupo: 1.0, diasPresentes: 1, diasTotais: 2, fator: 0.5, pontoExtra: 0.5 }
+                  - { participanteId: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupo: Beta, colocacaoGrupo: 2, pontoExtraGrupo: 0.8, diasPresentes: 2, diasTotais: 2, fator: 1.0, pontoExtra: 0.8 }
+                  - { participanteId: 4, matricula: '2026-115', nome: Pedro Santos, turma: ES 2026.2, grupo: Beta, colocacaoGrupo: 2, pontoExtraGrupo: 0.8, diasPresentes: 0, diasTotais: 2, fator: 0.0, pontoExtra: 0.0 }
+                paginacao: { pagina: 1, tamanho: 20, totalItens: 72, totalPaginas: 4 }
+                resumo: { totalParticipantes: 72, assiduidade: 0.924, aptos: 68 }
+        '409':
+          description: Classificação com empate pendente
+          content:
+            application/json:
+              example: { statusCode: 409, message: A classificação tem empate pendente; registre o desempate antes da apuração., error: Conflict }
+
+  # Relatórios (RF15, RF17): arquivo no corpo, nome no Content-Disposition
+  /eventos/{eventoId}/relatorios/parcial:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - $ref: '#/components/parameters/Formato'
+    get:
+      summary: Relatório parcial por grupo, só com os desafios já lançados
+      responses:
+        '200':
+          $ref: '#/components/responses/Arquivo'
+
+  /eventos/{eventoId}/relatorios/final:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - $ref: '#/components/parameters/Formato'
+    get:
+      summary: Relatório final por participante (exige token, RNF03)
+      responses:
+        '200':
+          $ref: '#/components/responses/Arquivo'
+        '409':
+          description: Empate pendente
+          content:
+            application/json:
+              example: { statusCode: 409, message: A classificação tem empate pendente; registre o desempate antes do relatório final., error: Conflict }
+
+  /eventos/{eventoId}/relatorios/final/previa:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Prévia do relatório final, agrupada por turma
+      parameters:
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Turmas
+          content:
+            application/json:
+              example:
+                - turma: CC 2026.2
+                  totalParticipantes: 1
+                  participantes:
+                    - { matricula: '2026-103', nome: Arthur Pires, grupo: Beta, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: true }], pontoExtra: 0.8 }
+                - turma: ES 2026.2
+                  totalParticipantes: 2
+                  participantes:
+                    - { matricula: '2026-101', nome: Lucas Vitorino, grupo: Alfa, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: true }], pontoExtra: 1.0 }
+                    - { matricula: '2026-102', nome: Sofia Moreira, grupo: Alfa, presencas: [{ numeroDia: 1, presente: true }, { numeroDia: 2, presente: false }], pontoExtra: 0.5 }
+
+  /eventos/{eventoId}/dias/{diaId}/presencas:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: diaId, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Presença de todos os participantes no dia (RF07)
+      parameters:
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Grade do dia
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, resumo]
+                properties:
+                  dados:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Presenca'
+                  resumo:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      presentes: { type: integer }
+                      ausentes: { type: integer }
+              example:
+                dados:
+                  - { participanteId: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupoId: 1, grupo: Alfa, presente: true }
+                  - { participanteId: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupoId: 1, grupo: Alfa, presente: true }
+                  - { participanteId: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupoId: 2, grupo: Beta, presente: false }
+                  - { participanteId: 4, matricula: '2026-104', nome: Camila Ferreira, turma: ES 2026.2, grupoId: 2, grupo: Beta, presente: true }
+                  - { participanteId: 5, matricula: '2026-105', nome: Rafael Nogueira, turma: CC 2026.2, grupoId: 1, grupo: Alfa, presente: false }
+                resumo: { total: 5, presentes: 3, ausentes: 2 }
+
+  /eventos/{eventoId}/dias/{diaId}/presencas/{participanteId}:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+      - { name: diaId, in: path, required: true, schema: { type: integer } }
+      - { name: participanteId, in: path, required: true, schema: { type: integer } }
+    put:
+      summary: Marca a presença de um participante no dia (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [presente]
+              properties:
+                presente: { type: boolean }
+      responses:
+        '200':
+          description: Presença gravada
+          content:
+            application/json:
+              example: { participanteId: 3, presente: true }
+
+  /eventos/{eventoId}/participantes/importacao/previa:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Valida a planilha sem gravar nada (RF04)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Arquivo'
+      responses:
+        '200':
+          description: Prévia da importação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviaImportacao'
+              example:
+                totalLinhas: 6
+                linhasValidas: 3
+                linhasComErro: 3
+                linhas:
+                  - { linha: 1, nome: Lucas Vitorino, matricula: '2026-101', turma: ES 2026.2, grupo: Alpha Red, status: VALIDO, motivoErro: null }
+                  - { linha: 2, nome: Sofia Moreira, matricula: '2026-102', turma: ES 2026.2, grupo: Alpha Red, status: VALIDO, motivoErro: null }
+                  - { linha: 3, nome: Arthur Pires, matricula: '2026-103', turma: CC 2026.2, grupo: Cyber Blue, status: VALIDO, motivoErro: null }
+                  - { linha: 15, nome: Camila Ferreira, matricula: '2026-104', turma: ES 2026.2, grupo: Green Matrix, status: ERRO, motivoErro: Matrícula duplicada }
+                  - { linha: 22, nome: Rafael Nogueira, matricula: '2026-110', turma: CC 2026.2, grupo: Red Phoenix, status: ERRO, motivoErro: Grupo não existe }
+                  - { linha: 40, nome: Pedro Santos, matricula: '2026-115', turma: ES 2026.2, grupo: null, status: ERRO, motivoErro: Grupo obrigatório }
+
+  /eventos/{eventoId}/participantes/importacao:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    post:
+      summary: Grava a planilha, só se não houver erro (RF04)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Arquivo'
+      responses:
+        '201':
+          description: Participantes importados. O front não depende do corpo.
+          content:
+            application/json:
+              example: { importados: 71 }
+        '422':
+          description: A planilha tem erros; devolve as linhas
+          content:
+            application/json:
+              example: { statusCode: 422, message: A planilha tem 4 linhas com erro., error: Unprocessable Entity }
+
+  /eventos/{eventoId}/participantes:
+    parameters:
+      - $ref: '#/components/parameters/EventoId'
+    get:
+      summary: Participantes do evento, paginados
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, default: 1 } }
+        - { name: tamanho, in: query, schema: { type: integer, default: 20 } }
+        - { name: grupoId, in: query, schema: { type: integer } }
+        - { name: turma, in: query, schema: { type: string } }
+        - { name: busca, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Participante'
+                  paginacao:
+                    $ref: '../../docs/openapi/openapi-v0.1.yaml#/components/schemas/PaginacaoMetaDto'
+              example:
+                dados:
+                  - { id: 1, matricula: '2026-101', nome: Lucas Vitorino, turma: ES 2026.2, grupoId: 1, grupo: Alpha Red }
+                  - { id: 2, matricula: '2026-102', nome: Sofia Moreira, turma: ES 2026.2, grupoId: 1, grupo: Alpha Red }
+                  - { id: 3, matricula: '2026-103', nome: Arthur Pires, turma: CC 2026.2, grupoId: 2, grupo: Cyber Blue }
+                paginacao: { pagina: 1, tamanho: 20, totalItens: 72, totalPaginas: 4 }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Arquivo:
+      description: Arquivo do relatório
+      headers:
+        Content-Disposition:
+          schema: { type: string }
+          example: attachment; filename="relatorio-arena-comp-2026.pdf"
+      content:
+        application/pdf:
+          schema: { type: string, format: binary }
+          example: '%PDF-1.4 relatório de exemplo do mock'
+        application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+          schema: { type: string, format: binary }
+          example: planilha de exemplo do mock
+  parameters:
+    Formato:
+      name: formato
+      in: query
+      required: true
+      schema: { type: string, enum: [PDF, XLSX] }
+    EventoId:
+      name: eventoId
+      in: path
+      required: true
+      schema: { type: integer }
+  schemas:
+    Configuracao:
+      type: object
+      required: [conversaoPontoExtra, itensBonificacao, penalidadeMin, penalidadeMax, fatoresPresenca, criteriosDesempate]
+      properties:
+        conversaoPontoExtra:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontoExtra]
+            properties:
+              colocacao: { type: integer, minimum: 1 }
+              pontoExtra: { type: number, minimum: 0 }
+        itensBonificacao:
+          type: array
+          items:
+            type: object
+            required: [nome, teto]
+            properties:
+              id: { type: integer, description: Ausente em item novo }
+              nome: { type: string, minLength: 1 }
+              teto: { type: integer, minimum: 1 }
+        penalidadeMin: { type: integer, minimum: 0 }
+        penalidadeMax: { type: integer, minimum: 0 }
+        fatoresPresenca:
+          type: array
+          items:
+            type: object
+            required: [diasPresentes, fator]
+            properties:
+              diasPresentes: { type: integer, minimum: 0 }
+              fator: { type: number, minimum: 0, maximum: 1 }
+        criteriosDesempate:
+          type: array
+          items:
+            type: object
+            required: [ordem, tipo, descricao]
+            properties:
+              ordem: { type: integer, minimum: 1 }
+              tipo:
+                type: string
+                enum: [MAIOR_PONTUACAO_DESAFIO, MAIOR_SOMA_DESAFIOS, MAIOR_BONIFICACAO, MENOR_PENALIDADE]
+              desafioId: { type: integer, nullable: true }
+              descricao: { type: string }
+    Arquivo:
+      type: object
+      required: [arquivo]
+      properties:
+        arquivo: { type: string, format: binary, description: .csv (UTF-8, vírgula ou ponto e vírgula) ou .xlsx, até 5 MB }
+    PreviaImportacao:
+      type: object
+      required: [totalLinhas, linhasValidas, linhasComErro, linhas]
+      properties:
+        totalLinhas: { type: integer }
+        linhasValidas: { type: integer }
+        linhasComErro: { type: integer }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [linha, nome, matricula, turma, grupo, status, motivoErro]
+            properties:
+              linha: { type: integer }
+              nome: { type: string, nullable: true }
+              matricula: { type: string, nullable: true }
+              turma: { type: string, nullable: true }
+              grupo: { type: string, nullable: true }
+              status: { type: string, enum: [VALIDO, ERRO] }
+              motivoErro: { type: string, nullable: true }
+    Participante:
+      type: object
+      required: [id, matricula, nome, turma, grupoId, grupo]
+      properties:
+        id: { type: integer }
+        matricula: { type: string }
+        nome: { type: string }
+        turma: { type: string }
+        grupoId: { type: integer }
+        grupo: { type: string }
+    Penalidade:
+      type: object
+      required: [id, grupoId, pontos, descricao, justificativa]
+      properties:
+        id: { type: integer }
+        grupoId: { type: integer }
+        pontos: { type: integer }
+        descricao: { type: string }
+        justificativa: { type: string }
+    SalvarPenalidade:
+      type: object
+      properties:
+        grupoId: { type: integer }
+        pontos: { type: integer, minimum: 0 }
+        descricao: { type: string }
+        justificativa: { type: string, minLength: 1 }
+    Presenca:
+      type: object
+      required: [participanteId, matricula, nome, turma, grupoId, grupo, presente]
+      properties:
+        participanteId: { type: integer }
+        matricula: { type: string }
+        nome: { type: string }
+        turma: { type: string }
+        grupoId: { type: integer }
+        grupo: { type: string }
+        presente: { type: boolean }
+    SalvarDesafio:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        descricao: { type: string }
+        diaId: { type: integer }
+        pontosColocacao:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontos]
+            properties:
+              colocacao: { type: integer, minimum: 1 }
+              pontos: { type: integer, minimum: 0 }
+    Desafio:
+      type: object
+      required: [id, nome, descricao, diaId, pontosColocacao]
+      properties:
+        id: { type: integer }
+        nome: { type: string }
+        descricao: { type: string }
+        diaId: { type: integer }
+        pontosColocacao:
+          type: array
+          items:
+            type: object
+            required: [colocacao, pontos]
+            properties:
+              colocacao: { type: integer }
+              pontos: { type: integer }

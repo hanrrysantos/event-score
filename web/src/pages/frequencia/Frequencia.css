@@ -1,0 +1,34 @@
+.filtros-frequencia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.filtros-frequencia select {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--raio-pilula);
+  border: 1px solid var(--borda);
+  background: var(--campo);
+  font-size: 16px;
+  color: var(--texto);
+}
+
+.presenca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.presenca input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--preto);
+  cursor: pointer;
+}
+
+.nao-salvo {
+  color: var(--erro);
+  font-weight: 700;
+}
