@@ -32,3 +32,22 @@
   color: var(--erro);
   font-weight: 700;
 }
+
+.so-celular {
+  display: none;
+}
+
+/* Celular: matrícula e grupo vão para baixo do nome, para a caixa de presença caber sem rolar a tabela. */
+@media (max-width: 640px) {
+  .tabela-frequencia th:nth-child(1),
+  .tabela-frequencia td:nth-child(1),
+  .tabela-frequencia th:nth-child(3),
+  .tabela-frequencia td:nth-child(3) {
+    display: none;
+  }
+
+  .tabela-frequencia .so-celular {
+    display: block;
+    font-size: 12px;
+  }
+}

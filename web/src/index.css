@@ -51,6 +51,8 @@ textarea {
   margin: 0 auto;
   padding: 20px 16px 48px;
   display: grid;
+  /* minmax(0, 1fr): sem isso, conteúdo largo (tabela, botões) estica a coluna além da tela no celular. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -109,6 +111,69 @@ textarea {
   background: var(--preto);
   color: var(--branco);
   font-weight: 700;
+}
+
+/* No desktop as abas ficam na própria barra; abaixo de 1200 px (a barra inteira, com Gestão, passa de 1100) viram o botão "Menu". */
+.nav-itens {
+  display: contents;
+}
+
+.nav .nav-menu {
+  display: none;
+  color: var(--texto);
+  font-weight: 700;
+  background: var(--branco);
+}
+
+@media (max-width: 1200px) {
+  .nav {
+    justify-self: stretch;
+    width: auto;
+    max-width: none;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    border-radius: var(--raio-cartao);
+    overflow: visible;
+  }
+
+  .nav-marca {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .nav-evento {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav .nav-menu {
+    display: block;
+  }
+
+  .nav-itens {
+    display: none;
+  }
+
+  .nav-aberta .nav-itens {
+    display: grid;
+    flex-basis: 100%;
+    gap: 2px;
+    padding-top: 6px;
+  }
+
+  .nav-itens a,
+  .nav-itens button {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 15px;
+  }
+
+  .nav-itens .nav-usuario {
+    border-left: 0;
+    border-top: 1px solid var(--borda);
+    max-width: none;
+    padding: 12px 16px 4px;
+  }
 }
 
 .hero {
@@ -320,6 +385,8 @@ textarea {
 
 .tabela-rolagem {
   overflow-x: auto;
+  /* Prende ao recipiente os rótulos .sr-only (absolutos) das células; sem isso eles alargam a página. */
+  position: relative;
 }
 
 .tabela {
@@ -450,6 +517,12 @@ textarea {
   background: var(--campo);
 }
 
+/* A busca ocupa a linha toda quando não cabe ao lado do resto (placeholder não fica cortado). */
+.filtros input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
 .contagem-3 {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -466,4 +539,44 @@ textarea {
 .sub {
   display: block;
   color: var(--texto-suave);
+}
+
+/* Celular */
+@media (max-width: 640px) {
+  .hero {
+    padding: 22px 20px;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+  }
+
+  .cartao {
+    padding: 16px;
+  }
+
+  /* Números em duas colunas em vez de um cartão inteiro para cada. */
+  .contagem,
+  .contagem-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .contagem strong {
+    font-size: 30px;
+  }
+
+  /* Coluna não espreme até quebrar matrícula e data: a tabela rola dentro do cartão. */
+  .tabela th,
+  .tabela td {
+    white-space: nowrap;
+  }
+
+  .modal-topo {
+    padding: 16px 20px;
+  }
+
+  .modal-corpo {
+    padding: 20px;
+  }
 }

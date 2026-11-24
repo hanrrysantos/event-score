@@ -30,6 +30,9 @@ export default function Layout() {
   const logado = Boolean(token.ler());
 
   const [erroEvento, setErroEvento] = useState('');
+  // Telas menores que a barra inteira: as abas ficam atrás do botão "Menu".
+  const [menuAberto, setMenuAberto] = useState(false);
+  const fecharMenu = () => setMenuAberto(false);
 
   const recarregarEventoAtivo = useCallback(() => {
     api<Evento>('/eventos/ativo')
@@ -69,34 +72,55 @@ export default function Layout() {
 
   return (
     <div className="pagina">
-      <nav className="nav" aria-label="Seções">
+      <nav
+        className={`nav${menuAberto ? ' nav-aberta' : ''}`}
+        aria-label="Seções"
+      >
         <span className="nav-marca">
           <img src="/logo-es.svg" alt="" />
-          {eventoAtivo?.nome ?? 'EventScore'}
+          <span className="nav-evento">
+            {eventoAtivo?.nome ?? 'EventScore'}
+          </span>
         </span>
-        {ABAS.map(([rota, nome]) => (
-          <NavLink
-            key={rota}
-            to={rota}
-            data-telemetry-action={`navigation.${rota.slice(1)}`}
-          >
-            {nome}
-          </NavLink>
-        ))}
-        {usuario?.perfil === 'MASTER' && (
-          <NavLink to="/gestao" data-telemetry-action="navigation.gestao">
-            Gestão
-          </NavLink>
-        )}
-        {usuario && <span className="nav-usuario">{usuario.nome}</span>}
         <button
           type="button"
-          data-telemetry-action="auth.logout"
-          onClick={sair}
-          aria-label={usuario ? `Sair (${usuario.nome})` : 'Sair'}
+          className="nav-menu"
+          aria-expanded={menuAberto}
+          aria-controls="nav-itens"
+          onClick={() => setMenuAberto((aberto) => !aberto)}
         >
-          Sair
+          {menuAberto ? 'Fechar' : 'Menu'}
         </button>
+        <div id="nav-itens" className="nav-itens">
+          {ABAS.map(([rota, nome]) => (
+            <NavLink
+              key={rota}
+              to={rota}
+              data-telemetry-action={`navigation.${rota.slice(1)}`}
+              onClick={fecharMenu}
+            >
+              {nome}
+            </NavLink>
+          ))}
+          {usuario?.perfil === 'MASTER' && (
+            <NavLink
+              to="/gestao"
+              data-telemetry-action="navigation.gestao"
+              onClick={fecharMenu}
+            >
+              Gestão
+            </NavLink>
+          )}
+          {usuario && <span className="nav-usuario">{usuario.nome}</span>}
+          <button
+            type="button"
+            data-telemetry-action="auth.logout"
+            onClick={sair}
+            aria-label={usuario ? `Sair (${usuario.nome})` : 'Sair'}
+          >
+            Sair
+          </button>
+        </div>
       </nav>
       {erroEvento && (
         <div className="cartao pendentes" role="alert">
