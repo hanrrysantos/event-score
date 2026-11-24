@@ -95,7 +95,18 @@
 
 @media (max-width: 640px) {
   .evento {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  /* Interruptor e botões ganham linha própria: lado a lado com o nome, saíam do cartão. */
+  .evento .interruptor,
+  .evento-acoes {
+    grid-column: 1 / -1;
+  }
+
+  .evento-acoes > * {
+    flex: 1;
   }
 }
 

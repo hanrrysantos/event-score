@@ -403,7 +403,7 @@ export default function Frequencia() {
         {dados && visiveis.length === 0 && <p className="dica">Nenhum participante encontrado.</p>}
         {visiveis.length > 0 && (
           <div className="tabela-rolagem">
-            <table className="tabela">
+            <table className="tabela tabela-frequencia">
               <thead>
                 <tr>
                   <th>Matrícula</th>
@@ -421,7 +421,12 @@ export default function Frequencia() {
                         <span className="avatar" aria-hidden="true">
                           {iniciais(p.nome)}
                         </span>
-                        {p.nome}
+                        <span>
+                          {p.nome}
+                          <small className="sub so-celular">
+                            {p.matricula} · {p.grupo}
+                          </small>
+                        </span>
                       </span>
                     </td>
                     <td>{p.grupo}</td>
